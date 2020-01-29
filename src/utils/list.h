@@ -92,9 +92,9 @@ static inline ListLink* list_pop(List *list)
 #define list_foreach(pos, head)                                 \
     for (ListLink *pos = (head); pos != NULL; pos = pos->next)
 
-#define list_safe_foreach(pos, iter, head)          \
-    for (ListLink *pos = (head), *iter = pos->next; \
-         pos != NULL;                               \
+#define list_safe_foreach(pos, iter, head)              \
+    for (ListLink *pos = (head), *iter = pos->next;     \
+         pos != NULL;                                   \
          pos = iter, iter = (pos ? pos->next : NULL))
 
 #endif /* SRC_UTILS_LIST_H */
