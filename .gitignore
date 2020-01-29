@@ -50,3 +50,11 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# build files
+build/*
+
+# tags files
+GPATH
+GRTAGS
+GTAGS
