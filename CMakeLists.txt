@@ -4,13 +4,15 @@ project(imp C)
 
 set(CMAKE_C_STANDARD 99)
 
-aux_source_directory(src DIR_SRC)
+aux_source_directory(src/utils DIR_UTILS)
+aux_source_directory(src/runtime DIR_RUNTIME)
 
 include_directories(src)
 add_definitions(-DUSE_TYPEOF)
 add_definitions(-Wall -g3)
 
-add_executable(${PROJECT_NAME} ${DIR_SRC})
+message("message : ${DIR_SRC}")
+add_executable(${PROJECT_NAME}_runtime ${DIR_RUNTIME} ${DIR_UTILS})
 
 # 测试
 add_executable(arena_test

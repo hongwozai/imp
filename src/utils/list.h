@@ -2,6 +2,7 @@
 #define SRC_UTILS_LIST_H
 
 #include <stddef.h>
+#include <stdbool.h>
 
 #ifdef USE_TYPEOF
 #define container_of(ptr, type, member) ({                      \
@@ -83,6 +84,11 @@ static inline ListLink* list_pop(List *list)
     ListLink *link = list->first;
     list_del(list, list->first);
     return link;
+}
+
+static inline bool list_empty(List *list)
+{
+    return list->first == NULL;
 }
 
 /**
