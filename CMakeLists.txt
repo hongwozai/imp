@@ -19,8 +19,15 @@ add_executable(arena_test
   )
 
 add_executable(list_test test/utils/list_test.c)
+add_executable(bit_test test/utils/bit_test.c)
+add_executable(buffer_test
+  src/utils/buffer.c
+  test/utils/buffer_test.c
+  )
 
 enable_testing()
 
 add_test(arena_test arena_test)
 add_test(list_test list_test)
+add_test(bit_test bit_test)
+add_test(buffer_test buffer_test)
