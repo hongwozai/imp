@@ -23,8 +23,7 @@ typedef struct GC {
 void gc_init(GC *gc);
 void gc_destroy(GC *gc);
 
-Object *gc_new(GC *gc, size_t size);
-void gc_markobj(GC *gc, Object *obj, MarkType mark);
+Object *gc_new(GC *gc, enum ObjectType type, size_t size);
 void gc_linkgrey(GC *gc, Object *obj);
 void gc_mark(GC *gc);
 void gc_sweep(GC *gc);

@@ -44,8 +44,8 @@ typedef struct Object {
 #define gettype(obj) (((obj)->marked_type & ~0xFF) >> 8)
 #define getmark(obj) ((obj)->marked_type & 0xFF)
 
-#define settype(obj, type)                                              \
-    ((obj)->marked_type = getmark((obj)->marked_type) | (type) << 8)
+#define settype(obj, type)                              \
+    ((obj)->marked_type = getmark(obj) | (type) << 8)
 #define setmark(obj, mark)                                          \
     ((obj)->marked_type = ((obj)->marked_type & ~0xFF) | (mark))
 
@@ -77,6 +77,7 @@ typedef struct StringObject {
 } StringObject;
 
 typedef struct ConsObject {
+    Object head;
     Object *car;
     Object *cdr;
 } ConsObject;

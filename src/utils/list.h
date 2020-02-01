@@ -24,6 +24,7 @@ typedef struct ListLink {
 typedef struct List {
     ListLink *first;
     ListLink *last;
+    size_t    size;
 } List;
 
 #define INIT_LIST { NULL, NULL }
@@ -33,6 +34,7 @@ static inline void list_init(List *list)
 {
     list->first = NULL;
     list->last  = NULL;
+    list->size = 0;
 }
 
 static inline void list_link_init(ListLink *link)
@@ -57,6 +59,7 @@ static inline void list_add(List *list, ListLink *pos, ListLink *link)
     else                    link->prev->next = link;
     if (link->next == NULL) list->last = link;
     else                    link->next->prev = link;
+    list->size ++;
 }
 
 static inline void list_del(List *list, ListLink *link)
@@ -67,6 +70,7 @@ static inline void list_del(List *list, ListLink *link)
     else                    link->prev->next = link->next;
     if (link->next == NULL) list->last = link->prev;
     else                    link->next->prev = link->prev;
+    list->size --;
 }
 
 static inline void list_push(List *list, ListLink *link)
@@ -98,9 +102,9 @@ static inline bool list_empty(List *list)
 #define list_foreach(pos, head)                                 \
     for (ListLink *pos = (head); pos != NULL; pos = pos->next)
 
-#define list_safe_foreach(pos, iter, head)              \
-    for (ListLink *pos = (head), *iter = pos->next;     \
-         pos != NULL;                                   \
+#define list_safe_foreach(pos, iter, head)                          \
+    for (ListLink *pos = (head), *iter = (pos ? pos->next : NULL);  \
+         pos != NULL;                                               \
          pos = iter, iter = (pos ? pos->next : NULL))
 
 #endif /* SRC_UTILS_LIST_H */
