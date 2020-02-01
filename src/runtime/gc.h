@@ -8,6 +8,7 @@ typedef enum MarkType {
     kWhite,
     kGrey,
     kBlack,
+    kFix,
 } MarkType;
 
 struct LinkedMemory {
@@ -27,5 +28,8 @@ Object *gc_new(GC *gc, enum ObjectType type, size_t size);
 void gc_linkgrey(GC *gc, Object *obj);
 void gc_mark(GC *gc);
 void gc_sweep(GC *gc);
+
+Object* gc_create_string(GC *gc, const char *str, size_t size);
+Object* gc_create_symbol(GC *gc, const char *str, size_t size, bool isfix);
 
 #endif /* SRC_RUNTIME_GC_H */

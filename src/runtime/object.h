@@ -2,6 +2,7 @@
 #define SRC_RUNTIME_OBJECT_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 /**
  * @ObjectType
@@ -28,6 +29,7 @@ enum ObjectType {
     /* 对象类型排在后面 */
     kString,
     kCons,
+    kSymbol,
 };
 
 /**
@@ -65,15 +67,17 @@ typedef struct ValueObject {
     Value value;
 } ValueObject;
 
+#define getvalue(obj) (((ValueObject*)(obj))->value)
+
 /**
  * 对象类型
  */
-#define STRING_OBJECT_STATIC_SIZE (15)
+#define STRING_OBJECT_STATIC_SIZE (16)
 typedef struct StringObject {
     Object head;
     size_t size;
     /* 本地存储，默认存储 */
-    char buf[STRING_OBJECT_STATIC_SIZE + 1];
+    char buf[STRING_OBJECT_STATIC_SIZE];
 } StringObject;
 
 typedef struct ConsObject {
@@ -81,5 +85,14 @@ typedef struct ConsObject {
     Object *car;
     Object *cdr;
 } ConsObject;
+
+typedef struct SymbolObject {
+    Object head;
+    Object *name;
+} SymbolObject;
+
+#include <stdio.h>
+
+void print_object(FILE *out, Object *obj);
 
 #endif /* SRC_RUNTIME_OBJECT_H */

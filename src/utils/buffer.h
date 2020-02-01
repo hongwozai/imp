@@ -13,6 +13,7 @@ typedef struct Buffer {
 void buffer_create(Buffer *buf, size_t size);
 void buffer_create1(Buffer *buf, const char *str, size_t size);
 void buffer_append(Buffer *buf, const char *str, size_t size);
+void buffer_appendchar(Buffer *buf, char ch);
 void buffer_appendbuf(Buffer *buf, Buffer *other);
 void buffer_reserved(Buffer *buf, size_t size);
 void buffer_free(Buffer *buf);

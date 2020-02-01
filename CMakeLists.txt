@@ -26,6 +26,10 @@ add_executable(buffer_test
   src/utils/buffer.c
   test/utils/buffer_test.c
   )
+add_executable(hashmap_test
+  src/utils/hashmap.c
+  test/utils/hashmap_test.c
+  )
 add_executable(gc_test
   src/runtime/gc.c
   test/runtime/gc_test.c
@@ -37,4 +41,5 @@ add_test(arena_test arena_test)
 add_test(list_test list_test)
 add_test(bit_test bit_test)
 add_test(buffer_test buffer_test)
+add_test(hashmap_test hashmap_test)
 add_test(gc_test gc_test)

@@ -38,7 +38,7 @@ void gc_sweep(GC *gc)
             list_del(&gc->all, temp);
             free(temp);
             continue;
-        } else {
+        } else if (getmark(obj) != kFix) {
             setmark(obj, kWhite);
         }
     }
@@ -70,7 +70,7 @@ void gc_linkgrey(GC *gc, Object *obj)
     setmark(obj, kGrey);
 }
 
-static void markchildobj(Object *obj);
+static void markchildobj(GC *gc, Object *obj);
 
 void gc_mark(GC *gc)
 {
@@ -78,7 +78,7 @@ void gc_mark(GC *gc)
         struct LinkedMemory *mem = gc->grey;
 
         /* mark all child object */
-        markchildobj(getobj(mem));
+        markchildobj(gc, getobj(mem));
         setmark(getobj(gc->grey), kBlack);
 
         /* next */
@@ -86,14 +86,48 @@ void gc_mark(GC *gc)
     }
 }
 
-void markchildobj(Object *obj)
+void markchildobj(GC *gc, Object *obj)
 {
     switch (gettype(obj)) {
     case kCons: {
         ConsObject *cons = (ConsObject*)obj;
-        setmark(cons->car, kGrey);
-        setmark(cons->cdr, kGrey);
+        gc_linkgrey(gc, cons->car);
+        gc_linkgrey(gc, cons->cdr);
+        break;
+    }
+    case kSymbol: {
+        SymbolObject *sym = (SymbolObject*)obj;
+        gc_linkgrey(gc, sym->name);
         break;
     }
     }
+}
+
+Object* gc_create_string(GC *gc, const char *str, size_t size)
+{
+    size_t newsize = (size <= STRING_OBJECT_STATIC_SIZE - 1)
+        ? sizeof(StringObject)
+        : sizeof(StringObject) + size - STRING_OBJECT_STATIC_SIZE + 1;
+    StringObject *name = (StringObject*)gc_new(gc, kString, newsize);
+
+    /* copy string buf */
+    memcpy(name->buf, str, size);
+    name->size = size;
+    name->buf[name->size] = 0;
+    return (Object*)name;
+}
+
+Object* gc_create_symbol(GC *gc, const char *str, size_t size, bool isfix)
+{
+    StringObject *name = (StringObject*)gc_create_string(gc, str, size);
+    SymbolObject *sym = (SymbolObject*)gc_new(gc, kSymbol, sizeof(SymbolObject));
+
+    /* symbol */
+    sym->name = (Object*)name;
+
+    if (isfix) {
+        setmark((Object*)name, kFix);
+        setmark((Object*)sym, kFix);
+    }
+    return (Object*)sym;
 }

@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
     Buffer buf;
     buffer_create1(&buf, "123123", 6);
     buffer_append(&buf, "567", 3);
-    if (strcmp(buf.buffer, "123123567") != 0) {
+    if (strncmp(buf.buffer, "123123567", 9) != 0) {
         exit(-1);
     }
     buffer_free(&buf);
