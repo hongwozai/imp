@@ -36,6 +36,11 @@ static AnalyFunction *curfunc(Analy *analy)
     return container_of(analy->funclist.first, AnalyFunction, link);
 }
 
+static Arena *curarena(Analy *analy)
+{
+    return &curfunc(analy)->arena;
+}
+
 void analysis_init(Analy *analy)
 {
     arena_init(&analy->arena, 1024);
@@ -89,7 +94,7 @@ static IrNode* visit_symbol(Analy *analy, Object *obj)
     IrNode *node = symtab_get(curfunc(analy)->cursymtab, sym_getname(obj));
     if (!node) {
         /* 当前作用域找不到 */
-        node = newnode(&curfunc(analy)->arena, &op_globalobj);
+        node = newnode(curarena(analy), &op_globalobj);
         return node;
     }
     return node;
@@ -106,7 +111,7 @@ static IrNode* visit_call(Analy *analy, Object *obj)
         size ++;
     }
 
-    nodes = arena_malloc(&curfunc(analy)->arena, sizeof(IrNode*) * size);
+    nodes = arena_malloc(curarena(analy), sizeof(IrNode*) * size);
 
     /* 逐个访问，并赋值 */
     size_t i = 0;
@@ -115,7 +120,7 @@ static IrNode* visit_call(Analy *analy, Object *obj)
         i++;
     }
 
-    node = newnode(&curfunc(analy)->arena, &op_callobj);
+    node = newnode(curarena(analy), &op_callobj);
     node->values = nodes;
     return node;
 }
