@@ -43,13 +43,13 @@ typedef struct Object {
     uintptr_t marked_type;
 } Object;
 
-#define gettype(obj) (((obj)->marked_type & ~0xFF) >> 8)
-#define getmark(obj) ((obj)->marked_type & 0xFF)
+#define gettype(obj) ((((Object*)obj)->marked_type & ~0xFF) >> 8)
+#define getmark(obj) (((Object*)obj)->marked_type & 0xFF)
 
-#define settype(obj, type)                              \
-    ((obj)->marked_type = getmark(obj) | (type) << 8)
-#define setmark(obj, mark)                                          \
-    ((obj)->marked_type = ((obj)->marked_type & ~0xFF) | (mark))
+#define settype(obj, type)                                      \
+    (((Object*)obj)->marked_type = getmark(obj) | (type) << 8)
+#define setmark(obj, mark)                                              \
+    (((Object*)obj)->marked_type = (((Object*)obj)->marked_type & ~0xFF) | (mark))
 
 /**
  * 值类型
@@ -85,6 +85,13 @@ typedef struct ConsObject {
     Object *car;
     Object *cdr;
 } ConsObject;
+
+#define getcar(xobj) (((ConsObject*)xobj)->car)
+#define getcdr(xobj) (((ConsObject*)xobj)->cdr)
+#define cons_foreach(cons, head)                \
+    for (ConsObject *cons = (ConsObject*)head;  \
+         gettype(cons) == kCons;                \
+         cons = (ConsObject*)getcdr(cons))
 
 typedef struct SymbolObject {
     Object head;

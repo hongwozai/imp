@@ -77,6 +77,7 @@ bool reader_open(Reader *reader, const char *file)
 void reader_close(Reader *reader)
 {
     if (reader->in) {
+        fflush(reader->in);
         fclose(reader->in);
     }
     reader->in = NULL;
@@ -127,9 +128,9 @@ Object *reader_read(Reader *reader)
         }
 
         /* string */
-        /* if (ch == '"') { */
-        /*     return read_string(reader); */
-        /* } */
+        if (ch == '"') {
+            return read_string(reader);
+        }
 
         /* list */
         if (ch == '(') {
@@ -147,7 +148,7 @@ static Object* read_number(Reader *reader, int sign)
     int isfloat = 0;
     Buffer buf;
 
-    buffer_reserved(&buf, 64);
+    buffer_create(&buf, 64);
 
     /* 加入符号 */
     if (sign != 0) {
@@ -230,27 +231,76 @@ static Object* read_list(Reader *reader)
         Object *elem = reader_read(reader);
 
         /* 将新的cons连接到last上 */
-        ConsObject *cons = (ConsObject*)last;
         ConsObject *new =
             (ConsObject*)gc_new(&impgc, kCons, sizeof(ConsObject));
-        cons->cdr = (Object*)new;
         new->car = elem;
         new->cdr = imp_nil;
 
-        last = cons->cdr;
+        if (last == imp_nil) {
+            ret = last = (Object*)new;
+        } else {
+            ConsObject *cons = (ConsObject*)last;
+            cons->cdr = (Object*)new;
+            last = cons->cdr;
+        }
     }
-    return NULL;
+    return ret;
 }
 
-static Object* read_string(Reader *reader);
+static Object* read_string(Reader *reader)
+{
+    Buffer buf;
+
+    /* 从没转义状态开始 */
+    char slash_state = 0;
+
+    buffer_create(&buf, 64);
+    for (;;) {
+        int ch = readchar(reader);
+
+        if (ch < 0) {
+            /* 字符串没有完结的最后的双引号 */
+            panic("syntax error! string not finished!");
+        }
+
+        /* 转义状态 */
+        if (slash_state) {
+            slash_state = 0;
+
+            /* 此处改变ch */
+            ch = trans(ch);
+            if (ch < 0) {
+                /* <0时，忽略当前字符 */
+                continue;
+            }
+            buffer_appendchar(&buf, ch);
+            continue;
+        }
+
+        /* 非转义状态 */
+        if (ch == '\\') {
+            /* 进入转义状态 */
+            slash_state = 1;
+            continue;
+        }
+
+        /* 结束 */
+        if (ch == '"') {
+            /* 生成字符串 */
+            return gc_create_string(&impgc, buf.buffer, buf.size);
+        }
+
+        buffer_appendchar(&buf, ch);
+    }
+}
 
 static Object* read_symbol(Reader *reader)
 {
     int ch;
     Buffer buf;
-    Object *obj;
+    Object *obj = imp_nil;
 
-    buffer_reserved(&buf, 64);
+    buffer_create(&buf, 64);
     for (;;) {
         ch = readchar(reader);
 
@@ -260,7 +310,7 @@ static Object* read_symbol(Reader *reader)
                 obj = imp_true;
             } else if (strncmp(buf.buffer, "false", 5) == 0) {
                 obj = imp_false;
-            } else if (strncmp(buf.buffer, "nil", 3)) {
+            } else if (strncmp(buf.buffer, "nil", 3) == 0) {
                 obj = imp_nil;
             } else {
                 /* symbol */

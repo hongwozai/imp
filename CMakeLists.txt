@@ -12,7 +12,7 @@ add_definitions(-DUSE_TYPEOF)
 add_definitions(-Wall -g3)
 
 message("message : ${DIR_SRC}")
-add_executable(${PROJECT_NAME}_runtime ${DIR_RUNTIME} ${DIR_UTILS})
+add_library(${PROJECT_NAME}_runtime SHARED ${DIR_RUNTIME} ${DIR_UTILS})
 
 # 测试
 add_executable(arena_test
@@ -34,6 +34,11 @@ add_executable(gc_test
   src/runtime/gc.c
   test/runtime/gc_test.c
   )
+add_executable(runtime_test
+  ${DIR_RUNTIME}
+  ${DIR_UTILS}
+  test/runtime/runtime_test.c
+  )
 
 enable_testing()
 
@@ -43,3 +48,4 @@ add_test(bit_test bit_test)
 add_test(buffer_test buffer_test)
 add_test(hashmap_test hashmap_test)
 add_test(gc_test gc_test)
+add_test(runtime_test runtime_test ${PROJECT_SOURCE_DIR}/test/runtime1.scm)

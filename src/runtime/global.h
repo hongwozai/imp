@@ -22,5 +22,6 @@ extern Object *imp_lambda;
 extern Object *imp_if;
 
 void global_init();
+void global_destroy();
 
 #endif /* SRC_RUNTIME_GLOBAL_H */

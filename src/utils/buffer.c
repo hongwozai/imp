@@ -10,7 +10,7 @@ void buffer_create(Buffer *buf, size_t size)
     if (!buf->buffer) {
         return;
     }
-    buf->size = size;
+    buf->size = 0;
     buf->capacity = size;
 }
 
@@ -21,6 +21,7 @@ void buffer_create1(Buffer *buf, const char *str, size_t size)
         return;
     }
     memcpy(buf->buffer, str, size);
+    buf->size = size;
 }
 
 void buffer_append(Buffer *buf, const char *str, size_t size)
@@ -34,7 +35,8 @@ void buffer_append(Buffer *buf, const char *str, size_t size)
 
 void buffer_appendchar(Buffer *buf, char ch)
 {
-    if (buf->capacity < buf->size + 1) {
+    if (buf->capacity < buf->size + 1 &&
+        buf->capacity > buf->size) {
         size_t newsize = buf->size << 1;
         if (newsize <= buf->size) {
             return;

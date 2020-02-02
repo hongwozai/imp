@@ -33,3 +33,8 @@ void global_init()
     imp_lambda = gc_create_symbol(&impgc, "lambda", 6, true);
     imp_if = gc_create_symbol(&impgc, "if", 2, true);
 }
+
+void global_destroy()
+{
+    gc_destroy(&impgc);
+}
