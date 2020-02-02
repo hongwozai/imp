@@ -12,6 +12,10 @@ size_t hashmap_noextend_func(struct HashMap *map)
 size_t hashmap_extend2pow_func(struct HashMap *map)
 {
     size_t newsize = map->bucket_size << 1;
+
+    if (map->nodenum >= map->bucket_size) {
+        return map->bucket_size;
+    }
     if (newsize < map->bucket_size) {
         return map->bucket_size;
     }

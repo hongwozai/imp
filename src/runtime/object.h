@@ -98,8 +98,12 @@ typedef struct SymbolObject {
     Object *name;
 } SymbolObject;
 
+#define sym_getname(obj) (((SymbolObject*)obj)->name)
+
 #include <stdio.h>
+#include <stdbool.h>
 
 void print_object(FILE *out, Object *obj);
+bool equal_object(Object *one, Object *two);
 
 #endif /* SRC_RUNTIME_OBJECT_H */

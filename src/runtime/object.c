@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <string.h>
 #include "object.h"
 #include "panic.h"
 
@@ -52,4 +54,48 @@ void print_object(FILE *out, Object *obj)
     default:
         panic("bug! check code!");
     }
+}
+
+bool equal_object(Object *one, Object *two)
+{
+    if (gettype(one) != gettype(two)) {
+        return false;
+    }
+
+    switch (gettype(one)) {
+    case kFixInt: {
+        return getvalue(one).fixint == getvalue(two).fixint;
+    }
+    case kFixFloat: {
+        return getvalue(one).fixfloat == getvalue(two).fixfloat;
+    }
+    case kBool: {
+        return getvalue(one)._bool == getvalue(two)._bool;
+    }
+    case kChar: {
+        return getvalue(one)._char == getvalue(two)._char;
+    }
+    case kEof: return true;
+    case kNil: return true;
+
+    case kString: {
+        StringObject *onestr = (StringObject*)one;
+        StringObject *twostr = (StringObject*)two;
+        if (onestr->size != twostr->size) {
+            return false;
+        }
+        return strncmp(onestr->buf, twostr->buf, onestr->size) == 0;
+    }
+    case kSymbol: {
+        return equal_object(
+            ((SymbolObject*)one)->name,
+            ((SymbolObject*)two)->name);
+    }
+    case kCons: {
+        return one == two;
+    }
+    default:
+        panic("bug! check code!");
+    }
+    return false;
 }

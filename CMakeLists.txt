@@ -6,6 +6,7 @@ set(CMAKE_C_STANDARD 99)
 
 aux_source_directory(src/utils DIR_UTILS)
 aux_source_directory(src/runtime DIR_RUNTIME)
+aux_source_directory(src/compiler DIR_COMPILER)
 
 include_directories(src)
 add_definitions(-DUSE_TYPEOF)
@@ -13,6 +14,12 @@ add_definitions(-Wall -g3)
 
 message("message : ${DIR_SRC}")
 add_library(${PROJECT_NAME}_runtime SHARED ${DIR_RUNTIME} ${DIR_UTILS})
+
+add_executable(${PROJECT_NAME}_compiler
+  ${DIR_RUNTIME}
+  ${DIR_COMPILER}
+  ${DIR_UTILS}
+  )
 
 # 测试
 add_executable(arena_test

@@ -21,6 +21,11 @@ typedef struct HashMap {
     size_t nodenum;
 } HashMap;
 
+static inline void hashmap_initlink(HashLink *link)
+{
+    list_link_init(&link->link);
+}
+
 bool hashmap_create(HashMap *map, size_t bucket_size,
                     size_t (*hash)(void *key),
                     void*  (*key)(HashLink *link),
