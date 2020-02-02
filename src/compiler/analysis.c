@@ -2,18 +2,23 @@
 #include "analysis.h"
 #include "runtime/panic.h"
 
+static IrNode* visit(Analy *analy, Object *obj);
 static IrNode* visit_symbol(Analy *analy, Object *obj);
 static IrNode* visit_call(Analy *analy, Object *obj);
 static IrNode* visit_atom(Analy *analy, Object *obj);
 
-IrNode* newnode(Arena *arena, IrOperator *op)
+static IrNode* newnode(Arena *arena, IrOperator *op)
 {
     IrNode *node = (IrNode*)arena_malloc(arena, sizeof(IrNode));
     node->op = op;
+    node->values = NULL;
+    node->controls = NULL;
+    node->value_count = 0;
+    node->control_count = 0;
     return node;
 }
 
-AnalyFunction* newfunc(Analy *analy)
+static AnalyFunction* newfunc(Analy *analy)
 {
     AnalyFunction *func =
         arena_malloc(&analy->arena, sizeof(AnalyFunction));
@@ -26,7 +31,7 @@ AnalyFunction* newfunc(Analy *analy)
     return func;
 }
 
-AnalyFunction *curfunc(Analy *analy)
+static AnalyFunction *curfunc(Analy *analy)
 {
     return container_of(analy->funclist.first, AnalyFunction, link);
 }
@@ -50,10 +55,15 @@ void analysis_destroy(Analy *analy)
     /* funclist的内存在arena内 */
 }
 
+IrNode *analysis_analy(Analy *analy, Object *obj)
+{
+    return visit(analy, obj);
+}
+
 /**
  * 访问者模式
  */
-IrNode *analysis_analy(Analy *analy, Object *obj)
+static IrNode *visit(Analy *analy, Object *obj)
 {
     if (gettype(obj) == kSymbol) {
         return visit_symbol(analy, obj);
@@ -88,11 +98,24 @@ static IrNode* visit_symbol(Analy *analy, Object *obj)
 static IrNode* visit_call(Analy *analy, Object *obj)
 {
     IrNode *node = NULL;
+    IrNode **nodes;
 
+    /* 计算列表长度 */
+    size_t size = 0;
     cons_foreach(cons, obj) {
-        /* first */
-        if ((Object*)cons == obj) {
-        }
+        size ++;
     }
+
+    nodes = arena_malloc(&curfunc(analy)->arena, sizeof(IrNode*) * size);
+
+    /* 逐个访问，并赋值 */
+    size_t i = 0;
+    cons_foreach(cons, obj) {
+        nodes[i] = visit(analy, cons->car);
+        i++;
+    }
+
+    node = newnode(&curfunc(analy)->arena, &op_callobj);
+    node->values = nodes;
     return node;
 }

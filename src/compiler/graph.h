@@ -1,6 +1,7 @@
 #ifndef SRC_COMPILER_IR_H
 #define SRC_COMPILER_IR_H
 
+#include "utils/arena.h"
 #include "runtime/object.h"
 #include "operator.h"
 
@@ -11,15 +12,17 @@ typedef struct IrNode IrNode;
 
 struct IrNode {
     IrOperator *op;
-    IrNode **inputs;
-    IrNode **control_inputs;
-    size_t value_input_count;
-    size_t control_input_count;
+    IrNode **values;
+    IrNode **controls;
+    size_t value_count;
+    size_t control_count;
     IrNodeAttr *attr;
 };
 
 typedef struct IrGraph {
     IrNode *end;
 } IrGraph;
+
+IrNode* irnode_new(Arena *arena, IrOperator *op);
 
 #endif /* SRC_COMPILER_IR_H */
