@@ -18,7 +18,7 @@
  */
 enum ObjectType {
     /* 值类型排在前面 */
-    kFixInt,
+    kFixInt = 1,
     kFixFloat,
     kBool,
     kChar,
@@ -92,6 +92,12 @@ typedef struct ConsObject {
     for (ConsObject *cons = (ConsObject*)head;  \
          gettype(cons) == kCons;                \
          cons = (ConsObject*)getcdr(cons))
+
+static inline size_t cons_length(Object *obj) {
+    size_t size = 0;
+    cons_foreach(cons, obj) { size ++; }
+    return size;
+}
 
 typedef struct SymbolObject {
     Object head;

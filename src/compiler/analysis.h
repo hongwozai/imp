@@ -11,11 +11,13 @@ typedef struct AnalyFunction {
     Arena  arena;
     /* 当前函数的符号表 */
     SymTab *cursymtab;
-    IrGraph graph;
+    /* 指向最后 */
+    IrNode *end;
 } AnalyFunction;
 
 typedef struct Analy {
     Arena arena;
+    /* 函数表 */
     List funclist;
     /* 常量表 */
     SymTab consttab;

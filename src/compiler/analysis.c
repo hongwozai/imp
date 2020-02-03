@@ -7,17 +7,6 @@ static IrNode* visit_symbol(Analy *analy, Object *obj);
 static IrNode* visit_call(Analy *analy, Object *obj);
 static IrNode* visit_atom(Analy *analy, Object *obj);
 
-static IrNode* newnode(Arena *arena, IrOperator *op)
-{
-    IrNode *node = (IrNode*)arena_malloc(arena, sizeof(IrNode));
-    node->op = op;
-    node->values = NULL;
-    node->controls = NULL;
-    node->value_count = 0;
-    node->control_count = 0;
-    return node;
-}
-
 static AnalyFunction* newfunc(Analy *analy)
 {
     AnalyFunction *func =
@@ -25,7 +14,7 @@ static AnalyFunction* newfunc(Analy *analy)
     list_link_init(&func->link);
     arena_init(&func->arena, 4096);
 
-    func->cursymtab = (SymTab*)arena_malloc(&func->arena, sizeof(SymTab));
+    func->cursymtab = arena_malloc(&func->arena, sizeof(SymTab));
     symtab_create(func->cursymtab, NULL);
     /* ir graph */
     return func;
@@ -84,7 +73,7 @@ static IrNode *visit(Analy *analy, Object *obj)
 static IrNode* visit_atom(Analy *analy, Object *obj)
 {
     /* 使用全局的arena */
-    IrNode *node = newnode(&analy->arena, &op_constobj);
+    IrNode *node = irnode_new(&analy->arena, kOpConstObj, 0, 0, 0, obj);
     symtab_set(&analy->consttab, &analy->arena, obj, node);
     return node;
 }
@@ -94,7 +83,7 @@ static IrNode* visit_symbol(Analy *analy, Object *obj)
     IrNode *node = symtab_get(curfunc(analy)->cursymtab, sym_getname(obj));
     if (!node) {
         /* 当前作用域找不到 */
-        node = newnode(curarena(analy), &op_globalobj);
+        node = irnode_new(curarena(analy), kOpGlobalObj, 0, 0, 0, obj);
         return node;
     }
     return node;
@@ -106,10 +95,7 @@ static IrNode* visit_call(Analy *analy, Object *obj)
     IrNode **nodes;
 
     /* 计算列表长度 */
-    size_t size = 0;
-    cons_foreach(cons, obj) {
-        size ++;
-    }
+    size_t size = cons_length(obj);
 
     nodes = arena_malloc(curarena(analy), sizeof(IrNode*) * size);
 
@@ -120,7 +106,6 @@ static IrNode* visit_call(Analy *analy, Object *obj)
         i++;
     }
 
-    node = newnode(curarena(analy), &op_callobj);
-    node->values = nodes;
+    node = irnode_new(curarena(analy), kOpCallObj, size, 0, nodes, 0);
     return node;
 }
