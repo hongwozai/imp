@@ -111,5 +111,6 @@ typedef struct SymbolObject {
 
 void print_object(FILE *out, Object *obj);
 bool equal_object(Object *one, Object *two);
+size_t hash_object(Object *one);
 
 #endif /* SRC_RUNTIME_OBJECT_H */

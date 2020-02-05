@@ -187,11 +187,13 @@ static Object* read_number(Reader *reader, int sign)
             if (ch >= 0) {
                 backchar(reader);
             }
+            buffer_free(&buf);
             return obj;
         }
 
         /* 是数字，或者是符号，或者是.(并且当前还没有其他的.) */
         if (isdigit(ch) || (ch == '.' && isfloat == 0)) {
+            buffer_appendchar(&buf, ch);
             /* 设置为浮点数 */
             if (ch == '.') {
                 isfloat = 1;
@@ -320,6 +322,7 @@ static Object* read_symbol(Reader *reader)
             if (ch >= 0) {
                 backchar(reader);
             }
+            buffer_free(&buf);
             return obj;
         }
 

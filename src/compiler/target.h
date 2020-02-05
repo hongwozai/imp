@@ -25,9 +25,7 @@ typedef struct Target {
     ssize_t imm_max;
 
     /* emit */
-    void (*emit0)(int op);
-    void (*emit1)(int op, int operand);
-    void (*emit2)(int op, int src, int dst);
+    void (*emit)(int op, ...);
 } Target;
 
 #endif /* SRC_COMPILER_X64_X64_H */

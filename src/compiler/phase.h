@@ -5,4 +5,6 @@
 
 void phase_lowering(AnalyFunction *func);
 
+void phase_run(Analy *analy);
+
 #endif /* SRC_COMPILER_PHASE_H */

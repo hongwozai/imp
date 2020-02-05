@@ -13,13 +13,13 @@ size_t hashmap_extend2pow_func(struct HashMap *map)
 {
     size_t newsize = map->bucket_size << 1;
 
-    if (map->nodenum >= map->bucket_size) {
-        return map->bucket_size;
-    }
     if (newsize < map->bucket_size) {
         return map->bucket_size;
     }
-    return newsize;
+    if (map->nodenum >= map->bucket_size) {
+        return newsize;
+    }
+    return map->bucket_size;
 }
 
 bool hashmap_create(HashMap *map, size_t bucket_size,
@@ -31,6 +31,9 @@ bool hashmap_create(HashMap *map, size_t bucket_size,
     map->map = (List*)malloc(sizeof(List) * bucket_size);
     if (!map->map) {
         return false;
+    }
+    for (size_t i = 0; i < bucket_size; i++) {
+        list_init(&map->map[i]);
     }
     map->bucket_size = bucket_size;
     map->nodenum = 0;

@@ -4,64 +4,46 @@ IrOperator irallop[] = {
     /* high */
     [kOpConstObj] = {
         .name        = "constobj",
-        .type        = kValueNode,
-        .have_attr   = true,
-    },
-    [kOpGlobalObj] = {
-        .name        = "globalobj",
-        .type        = kValueNode,
-        .have_attr   = true,
     },
     [kOpCallObj] = {
         .name        = "callobj",
-        .type        = kValueNode,
-        .have_attr   = false,
+    },
+    [kOpIfObj] = {
+        .name        = "ifobj",
+    },
+    [kOpRegion] = {
+        .name        = "region",
+    },
+    [kOpIf] = {
+        .name        = "if",
     },
     /* low */
     [kOpCall] = {
         .name        = "call",
-        .type        = kValueNode,
-        .have_attr   = false,
     },
-    [kOpLoadRegSize] = {
-        .name        = "loadregsize",
-        .type        = kValueNode,
-        .have_attr   = false,
+    [kOpLoad] = {
+        .name        = "load",
     },
-    [kOpStoreRegSize] = {
-        .name        = "storeregsize",
-        .type        = kValueNode,
-        .have_attr   = false,
+    [kOpStore] = {
+        .name        = "store",
     },
     [kOpAdd] = {
         .name      = "add",
-        .type      = kValueNode,
-        .have_attr = false,
     },
     [kOpSub] = {
         .name      = "sub",
-        .type      = kValueNode,
-        .have_attr = false,
     },
     [kOpAnd] = {
         .name      = "and",
-        .type      = kValueNode,
-        .have_attr = false,
     },
     [kOpShl] = {
         .name      = "shl",
-        .type      = kValueNode,
-        .have_attr = false,
     },
     [kOpSar] = {
         .name      = "sar",
-        .type      = kValueNode,
-        .have_attr = false,
     },
     /* dead */
     [kOpDead] = {
         .name        = "dead",
-        .type        = kControlNode,
-        .have_attr   = false,
     },
 };

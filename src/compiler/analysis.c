@@ -7,27 +7,53 @@ static IrNode* visit_symbol(Analy *analy, Object *obj);
 static IrNode* visit_call(Analy *analy, Object *obj);
 static IrNode* visit_atom(Analy *analy, Object *obj);
 
-static AnalyFunction* newfunc(Analy *analy)
+static AnalyEnv* newenv(AnalyFunction *func)
+{
+    AnalyEnv *env = arena_malloc(&func->arena, sizeof(AnalyEnv));
+    env->cursymtab = arena_malloc(&func->arena, sizeof(SymTab));
+    symtab_create(env->cursymtab, NULL);
+    env->curregion = NULL;
+    return env;
+}
+
+static AnalyFunction* newfunc(Analy *analy, AnalyFunction *parent)
 {
     AnalyFunction *func =
         arena_malloc(&analy->arena, sizeof(AnalyFunction));
+
     list_link_init(&func->link);
     arena_init(&func->arena, 4096);
+    func->env = newenv(func);
+    func->parent = parent;
 
-    func->cursymtab = arena_malloc(&func->arena, sizeof(SymTab));
-    symtab_create(func->cursymtab, NULL);
-    /* ir graph */
+    /* 新创建一个region */
+    IrNode *region = irnode_newregion(&func->arena, 0, NULL);
+    func->env->curregion = region;
     return func;
 }
 
-static AnalyFunction *curfunc(Analy *analy)
+static void freefunc(AnalyFunction *func)
 {
-    return container_of(analy->funclist.first, AnalyFunction, link);
+    /* 需要释放符号表 */
+    for (SymTab *sym = func->env->cursymtab; sym != NULL; sym = sym->prev) {
+        symtab_destroy(sym);
+    }
+    arena_dispose(&func->arena);
 }
 
-static Arena *curarena(Analy *analy)
+static inline AnalyEnv* curenv(Analy *analy)
 {
-    return &curfunc(analy)->arena;
+    return analy->curfunc->env;
+}
+
+static inline Arena* curarena(Analy *analy)
+{
+    return &analy->curfunc->arena;
+}
+
+static inline IrNode* curregion(Analy *analy)
+{
+    return curenv(analy)->curregion;
 }
 
 void analysis_init(Analy *analy)
@@ -38,20 +64,25 @@ void analysis_init(Analy *analy)
         panic("memory overflow!");
     }
     /* 创建toplevel的函数 */
-    AnalyFunction *toplevel = newfunc(analy);
+    AnalyFunction *toplevel = newfunc(analy, NULL);
     list_append(&analy->funclist, &toplevel->link);
+
+    analy->curfunc = toplevel;
 }
 
 void analysis_destroy(Analy *analy)
 {
+    /* funclist的内存在arena内，需要释放符号表相关内存 */
+    list_foreach(pos, analy->funclist.first) {
+        freefunc(container_of(pos, AnalyFunction, link));
+    }
     arena_dispose(&analy->arena);
     symtab_destroy(&analy->consttab);
-    /* funclist的内存在arena内 */
 }
 
-IrNode *analysis_analy(Analy *analy, Object *obj)
+void analysis_analy(Analy *analy, Object *obj)
 {
-    return visit(analy, obj);
+    visit(analy, obj);
 }
 
 /**
@@ -73,19 +104,23 @@ static IrNode *visit(Analy *analy, Object *obj)
 static IrNode* visit_atom(Analy *analy, Object *obj)
 {
     /* 使用全局的arena */
-    IrNode *node = irnode_new(&analy->arena, kOpConstObj, 0, 0, 0, obj);
+    IrNode *node = irnode_newconstobj(&analy->arena, curregion(analy), obj);
     symtab_set(&analy->consttab, &analy->arena, obj, node);
+    curregion(analy)->inputs[0] = node;
     return node;
 }
 
 static IrNode* visit_symbol(Analy *analy, Object *obj)
 {
-    IrNode *node = symtab_get(curfunc(analy)->cursymtab, sym_getname(obj));
+    IrNode *node = symtab_nestget(curenv(analy)->cursymtab,
+                                  sym_getname(obj));
     if (!node) {
         /* 当前作用域找不到 */
-        node = irnode_new(curarena(analy), kOpGlobalObj, 0, 0, 0, obj);
+        node = irnode_newconstobj(curarena(analy), curregion(analy), obj);
+        curregion(analy)->inputs[0] = node;
         return node;
     }
+    curregion(analy)->inputs[0] = node;
     return node;
 }
 
@@ -106,6 +141,11 @@ static IrNode* visit_call(Analy *analy, Object *obj)
         i++;
     }
 
-    node = irnode_new(curarena(analy), kOpCallObj, size, 0, nodes, 0);
+    node = irnode_newcallobj(curarena(analy), curregion(analy),
+                             curregion(analy)->inputs[1],
+                             size,
+                             nodes);
+    curregion(analy)->inputs[0] = node;
+    curregion(analy)->inputs[1] = node;
     return node;
 }

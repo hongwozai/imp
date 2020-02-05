@@ -12,10 +12,20 @@ static size_t hashfunc(void *key)
 {
     size_t seed = 131313;
     size_t hash = 0;
-    StringObject *str = (StringObject*)key;
 
-    for (size_t i = 0; i < str->size; i++) {
-        hash = hash * seed + str->buf[i];
+    switch (gettype(key)) {
+    case kString: {
+        StringObject *str = (StringObject*)key;
+
+        for (size_t i = 0; i < str->size; i++) {
+            hash = hash * seed + str->buf[i];
+        }
+        return hash;
+    }
+    case kFixInt:
+        return getvalue(key).fixint;
+    case kFixFloat:
+        return getvalue(key).fixfloat;
     }
     return hash;
 }
