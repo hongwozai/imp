@@ -41,12 +41,38 @@ bool hashmap_create(HashMap *map, size_t bucket_size,
     map->hash = hash;
     map->equal = equal;
     map->key = key;
+    map->arena = NULL;
+    return true;
+}
+
+bool hashmap_arena_create(HashMap *map, Arena *arena, size_t bucket_size,
+                          size_t (*hash)(void *key),
+                          void*  (*key)(HashLink *link),
+                          bool   (*equal)(void *key, HashLink *hlink),
+                          size_t (*extend)(struct HashMap *map))
+{
+    map->map = (List*)arena_malloc(arena, sizeof(List) * bucket_size);
+    if (!map->map) {
+        return false;
+    }
+    for (size_t i = 0; i < bucket_size; i++) {
+        list_init(&map->map[i]);
+    }
+    map->bucket_size = bucket_size;
+    map->nodenum = 0;
+    map->extend = extend;
+    map->hash = hash;
+    map->equal = equal;
+    map->key = key;
+    map->arena = arena;
     return true;
 }
 
 void hashmap_destroy(HashMap *map)
 {
-    free(map->map);
+    if (!map->arena) {
+        free(map->map);
+    }
     map->map = NULL;
     map->bucket_size = 0;
 }
@@ -71,7 +97,12 @@ HashLink* hashmap_get(HashMap *map, void *key)
 
 void rehash(HashMap *map, size_t newsize)
 {
-    List *newmap = (List*)calloc(newsize, sizeof(List));
+    List *newmap;
+    if (map->arena) {
+        newmap = (List*)arena_malloc(map->arena, newsize * sizeof(List));
+    } else {
+        newmap = (List*)malloc(newsize * sizeof(List));
+    }
 
     for (size_t i = 0; i < map->bucket_size; i++) {
         list_foreach(listlink, map->map[i].first) {
@@ -82,7 +113,9 @@ void rehash(HashMap *map, size_t newsize)
         }
     }
 
-    free(map->map);
+    if (!map->arena) {
+        free(map->map);
+    }
     map->map = newmap;
     map->bucket_size = newsize;
 }

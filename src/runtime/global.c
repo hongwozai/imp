@@ -29,7 +29,7 @@ void global_init()
 
     /* symbol */
     imp_define = gc_create_symbol(&impgc, "define", 6, true);
-    imp_set = gc_create_symbol(&impgc, "set", 3, true);
+    imp_set = gc_create_symbol(&impgc, "set!", 4, true);
     imp_lambda = gc_create_symbol(&impgc, "lambda", 6, true);
     imp_if = gc_create_symbol(&impgc, "if", 2, true);
 }

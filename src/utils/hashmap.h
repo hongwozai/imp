@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "list.h"
+#include "arena.h"
 
 /* TODO: 改为内核hlist */
 typedef struct HashLink {
@@ -11,6 +12,7 @@ typedef struct HashLink {
 } HashLink;
 
 typedef struct HashMap {
+    Arena *arena;
     size_t (*hash)(void *key);
     void*  (*key)(HashLink *link);
     bool   (*equal)(void *key, HashLink *hlink);
@@ -31,6 +33,13 @@ bool hashmap_create(HashMap *map, size_t bucket_size,
                     void*  (*key)(HashLink *link),
                     bool   (*equal)(void *key, HashLink *hlink),
                     size_t (*extend)(struct HashMap *map)
+    );
+
+bool hashmap_arena_create(HashMap *map, Arena *arena, size_t bucket_size,
+                          size_t (*hash)(void *key),
+                          void*  (*key)(HashLink *link),
+                          bool   (*equal)(void *key, HashLink *hlink),
+                          size_t (*extend)(struct HashMap *map)
     );
 
 void hashmap_destroy(HashMap *map);

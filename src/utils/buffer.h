@@ -6,7 +6,6 @@
 typedef struct Buffer {
     char *buffer;
     size_t size;
-    /* 这里固定多申请一个字节的空间 */
     size_t capacity;
 } Buffer;
 

@@ -14,7 +14,7 @@ typedef struct SymTab {
     HashMap map;
 } SymTab;
 
-bool    symtab_create(SymTab *symtab, SymTab *prev);
+bool    symtab_create(SymTab *symtab, Arena *arena, SymTab *prev);
 IrNode* symtab_get(SymTab *symtab, Object *str);
 void    symtab_set(SymTab *symtab, Arena *arena, Object *str, IrNode *node);
 void    symtab_destroy(SymTab *symtab);

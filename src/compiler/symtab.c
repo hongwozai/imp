@@ -42,10 +42,10 @@ static void *keyfunc(HashLink *link)
     return (void*)node->str;
 }
 
-bool symtab_create(SymTab *symtab, SymTab *prev)
+bool symtab_create(SymTab *symtab, Arena *arena, SymTab *prev)
 {
     symtab->prev = prev;
-    if (!hashmap_create(&symtab->map, 32,
+    if (!hashmap_create(&symtab->map, arena, 32,
                         hashfunc,
                         keyfunc,
                         equalfunc,
