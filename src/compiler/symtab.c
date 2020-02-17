@@ -4,7 +4,7 @@
 typedef struct HashNode {
     HashLink hlink;
     Object *str;
-    IrNode *irnode;
+    Node *irnode;
 } HashNode;
 
 /* BKDR */
@@ -45,17 +45,17 @@ static void *keyfunc(HashLink *link)
 bool symtab_create(SymTab *symtab, Arena *arena, SymTab *prev)
 {
     symtab->prev = prev;
-    if (!hashmap_create(&symtab->map, arena, 32,
-                        hashfunc,
-                        keyfunc,
-                        equalfunc,
-                        hashmap_extend2pow_func)) {
+    if (!hashmap_arena_create(&symtab->map, arena, 32,
+                              hashfunc,
+                              keyfunc,
+                              equalfunc,
+                              hashmap_extend2pow_func)) {
         return false;
     }
     return true;
 }
 
-IrNode* symtab_get(SymTab *symtab, Object *str)
+Node* symtab_get(SymTab *symtab, Object *str)
 {
     HashLink *hlink = hashmap_get(&symtab->map, (void*)str);
     if (!hlink) {
@@ -64,9 +64,9 @@ IrNode* symtab_get(SymTab *symtab, Object *str)
     return container_of(hlink, HashNode, hlink)->irnode;
 }
 
-IrNode* symtab_nestget(SymTab *symtab, Object *str)
+Node* symtab_nestget(SymTab *symtab, Object *str)
 {
-    IrNode *node = NULL;
+    Node *node = NULL;
     for (SymTab *tab = symtab; tab != NULL; tab = tab->prev) {
         node = symtab_get(tab, str);
         if (node) {
@@ -76,7 +76,7 @@ IrNode* symtab_nestget(SymTab *symtab, Object *str)
     return node;
 }
 
-void symtab_set(SymTab *symtab, Arena *arena, Object *str, IrNode *node)
+void symtab_set(SymTab *symtab, Arena *arena, Object *str, Node *node)
 {
     HashNode *hnode = arena_malloc(arena, sizeof(HashNode));
     hashmap_initlink(&hnode->hlink);

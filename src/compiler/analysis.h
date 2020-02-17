@@ -1,14 +1,14 @@
 #ifndef SRC_COMPILER_ANALYSIS_H
 #define SRC_COMPILER_ANALYSIS_H
 
-#include "graph.h"
+#include "nodes.h"
 #include "symtab.h"
 #include "utils/arena.h"
 #include "runtime/object.h"
 
 typedef struct AnalyEnv {
-    /* region->inputs [0]代表value输入 [1]代表control输入 */
-    IrNode *curregion;
+    /* last exit region */
+    Node *curregion;
     SymTab *cursymtab;
 } AnalyEnv;
 

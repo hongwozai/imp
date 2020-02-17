@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include "phase.h"
 #include "analysis.h"
+#include "phase.h"
 #include "runtime/global.h"
 #include "runtime/reader.h"
 
@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
         analysis_analy(&analy, obj);
     }
 
+    printf("\n");
     phase_run(&analy);
 
     analysis_destroy(&analy);

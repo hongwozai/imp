@@ -63,6 +63,10 @@ Object *gc_new(GC *gc, enum ObjectType type, size_t size)
 
 void gc_linkgrey(GC *gc, Object *obj)
 {
+    if (getmark(obj) == kGrey) {
+        return;
+    }
+
     struct LinkedMemory *mem = (struct LinkedMemory*)obj - 1;
     mem->greynext = gc->grey;
     gc->grey = mem;

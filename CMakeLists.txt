@@ -36,6 +36,7 @@ add_executable(buffer_test
 add_executable(hashmap_test
   src/utils/hashmap.c
   test/utils/hashmap_test.c
+  ${DIR_UTILS}
   )
 add_executable(gc_test
   src/runtime/gc.c
