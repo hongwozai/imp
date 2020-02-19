@@ -2,12 +2,40 @@
 #include "nodes.h"
 #include "phase.h"
 
-typedef struct Phase Phase;
+/* =========================================================== */
 
-struct Phase {
-    void (*walk_region)(Phase *phase, AnalyFunction *analyfunc, Node *node);
-    void (*walk_value)(Phase *phase, AnalyFunction *analyfunc, Node *node);
+static void deobj_region(Phase *phase, AnalyFunction *analyfunc, Node *node)
+{
+    
+}
+
+static void deobj_value(Phase *phase, AnalyFunction *analyfunc, Node *node)
+{
+    
+}
+
+Phase deobj_phase = {
+    .visit_region = deobj_value,
+    .visit_value = deobj_value,
 };
+/* =========================================================== */
+static void print_value(Phase *phase, AnalyFunction *analyfunc, Node *node)
+{
+    node_dprint(stderr, node);
+    fprintf(stderr, "\n");
+}
+
+static void print_region(Phase *phase, AnalyFunction *analyfunc, Node *node)
+{
+    node_dprint(stderr, node);
+    fprintf(stderr, "\n");
+}
+
+Phase print_phase = {
+    .visit_region = print_value,
+    .visit_value = print_region,
+};
+/* =========================================================== */
 
 static void phase_visit_value(Phase *phase, AnalyFunction *analyfunc,
                              Node *node, WalkMode mode)
@@ -15,15 +43,7 @@ static void phase_visit_value(Phase *phase, AnalyFunction *analyfunc,
     if (node->mode != mode) { return; }
     node->mode = (node->mode == kModeTop) ? kModeBottom : kModeTop;
 
-    printf("vnode.op: %d", node->op);
-    if (node->op == kNodeGlobalObj ||
-        node->op == kNodeConstObj) {
-        printf("(");
-        print_object(stdout, node->attr.obj);
-        printf(")");
-    }
-    printf("\n");
-    /* phase->walk_value(phase, analyfunc, node); */
+    phase->visit_value(phase, analyfunc, node);
 }
 
 static void phase_walk_value(Phase *phase, AnalyFunction *analyfunc,
@@ -54,8 +74,7 @@ static void phase_visit_region(Phase *phase, AnalyFunction *analyfunc,
     region->mode = (region->mode == kModeTop) ? kModeBottom : kModeTop;
 
     /* 访问当前region */
-    printf("op: %d\n", (int)region->op);
-    /* phase->walk_region(phase, analyfunc, node); */
+    phase->visit_region(phase, analyfunc, region);
 
     /* 访问所有region的node */
     phase_walk_value(phase, analyfunc, region->attr.node, mode);
@@ -94,5 +113,5 @@ static void phase_walk(Phase *phase, Analy *analy)
 
 void phase_run(Analy *analy)
 {
-    phase_walk(NULL, analy);
+    phase_walk(&print_phase, analy);
 }

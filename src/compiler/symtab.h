@@ -15,7 +15,7 @@ typedef struct SymTab {
 } SymTab;
 
 bool    symtab_create(SymTab *symtab, Arena *arena, SymTab *prev);
-Node* symtab_get(SymTab *symtab, Object *str);
+Node*   symtab_get(SymTab *symtab, Object *str);
 void    symtab_set(SymTab *symtab, Arena *arena, Object *str, Node *node);
 void    symtab_destroy(SymTab *symtab);
 

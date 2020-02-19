@@ -145,5 +145,5 @@ static Node* visit_call(Analy *analy, Object *obj)
                       curregion(analy)->attr.node, true);
     }
     curregion(analy)->attr.node = callnode;
-    return node;
+    return callnode;
 }

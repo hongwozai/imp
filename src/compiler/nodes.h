@@ -1,6 +1,7 @@
 #ifndef SRC_COMPILER_NODES_H
 #define SRC_COMPILER_NODES_H
 
+#include <stdio.h>
 #include <stdbool.h>
 #include "ptrvec.h"
 #include "utils/list.h"
@@ -56,6 +57,7 @@ void  node_unuse(Node *self, Node *other, size_t index, bool isctrl);
 void  node_addinput(Arena *arena, Node *self, Node *other, bool isctrl);
 void  node_replaceinput(Arena *arena, Node *self, bool isctrl,
                         size_t index, Node *other);
+void  node_dprint(FILE *out, Node *self);
 void  node_removeinput(Arena *arena, Node *self, size_t index, bool isctrl);
 bool  node_isctrl(Node *self);
 void  node_remove(Node *self);

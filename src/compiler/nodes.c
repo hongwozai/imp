@@ -55,3 +55,47 @@ void node_replaceinput(Arena *arena, Node *self, bool isctrl,
     ptrvec_set(inputs, index, other);
     node_use(arena, other, self, index, isctrl);
 }
+
+void node_dprint(FILE *out, Node *self)
+{
+    fprintf(out, "(");
+    switch (self->op) {
+    case kNodeCallObj:
+        fprintf(out, "CallObj");
+        break;
+    case kNodeConstObj:
+        fprintf(out, "ConstObj");
+        break;
+    case kNodeGlobalObj:
+        fprintf(out, "GlobalObj");
+        break;
+    case kNodePhi:
+        fprintf(out, "Phi");
+        break;
+    case kNodeRegion:
+        fprintf(out, "Region");
+        break;
+    default:
+        fprintf(out, "op%d", self->op);
+    }
+    if (!ptrvec_empty(&self->inputs)) {
+        fprintf(out, " ");
+    }
+    /* inputs */
+    ptrvec_foreach(iter, &self->inputs) {
+        node_dprint(out, ptrvec_get(&self->inputs, iter));
+        if (iter != ptrvec_count(&self->inputs) - 1) {
+            fprintf(out, " ");
+        }
+    }
+    /* value */
+    switch (self->op) {
+    case kNodeConstObj:
+    case kNodeGlobalObj:
+        fprintf(out, " ");
+        print_object(out, self->attr.obj);
+    default:
+        break;
+    }
+    fprintf(out, ")");
+}
