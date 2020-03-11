@@ -25,6 +25,8 @@ void gc_init(GC *gc);
 void gc_destroy(GC *gc);
 
 Object *gc_new(GC *gc, enum ObjectType type, size_t size);
+Object *gc_vnew(GC *gc, enum ObjectType type, Value value);
+
 void gc_linkgrey(GC *gc, Object *obj);
 void gc_mark(GC *gc);
 void gc_sweep(GC *gc);

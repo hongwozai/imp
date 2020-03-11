@@ -14,11 +14,18 @@ typedef enum Opcode {
     kNodeCallObj,
     kNodeConstObj,
     kNodeGlobalObj,
+    kNodeImm,
+    kNodeCall,
+    /* load读取一个寄存器长度的数据 */
+    kNodeLoad,
+    /* store存放一个寄存器长度的数据 */
+    kNodeStore,
+    kNodeAdd,
+    kNodeShl,
+    kNodeLabel,
     kNodePhi,
     kNodeRegion,
     kNodeIf,
-    kNodeLoad,
-    kNodeStore,
 } Opcode;
 
 typedef struct Use {
@@ -28,9 +35,16 @@ typedef struct Use {
 } Use;
 
 typedef union NodeAttr {
-    size_t imm;
+    ssize_t imm;
     Object *obj;
     Node *node;
+
+    struct LabelData {
+        char *name;
+        char *data;
+        size_t datalen;
+    } label;
+
 } NodeAttr;
 
 typedef enum WalkMode {
@@ -48,7 +62,6 @@ struct Node {
     NodeAttr attr;
     /* 用于遍历 */
     WalkMode mode;
-    Node *next;
 };
 
 Node* node_new(Arena *arena, Opcode op);
@@ -57,6 +70,7 @@ void  node_unuse(Node *self, Node *other, size_t index, bool isctrl);
 void  node_addinput(Arena *arena, Node *self, Node *other, bool isctrl);
 void  node_replaceinput(Arena *arena, Node *self, bool isctrl,
                         size_t index, Node *other);
+void  node_vreplace(Arena *arena, Node *self, Node *other);
 void  node_dprint(FILE *out, Node *self);
 void  node_removeinput(Arena *arena, Node *self, size_t index, bool isctrl);
 bool  node_isctrl(Node *self);

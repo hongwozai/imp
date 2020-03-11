@@ -19,6 +19,6 @@ Node*   symtab_get(SymTab *symtab, Object *str);
 void    symtab_set(SymTab *symtab, Arena *arena, Object *str, Node *node);
 void    symtab_destroy(SymTab *symtab);
 
-Node* symtab_nestget(SymTab *symtab, Object *str);
+Node*   symtab_nestget(SymTab *symtab, Object *str);
 
 #endif /* SRC_COMPILER_SYMTAB_H */

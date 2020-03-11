@@ -1,12 +1,15 @@
-#ifndef SRC_COMPILER_INSTS_H
-#define SRC_COMPILER_INSTS_H
+#ifndef IMP_SRC_COMPILER_INSTS_H
+#define IMP_SRC_COMPILER_INSTS_H
 
 #include "utils/list.h"
+#include "ptrvec.h"
 
 typedef enum InstCode {
     kInstLoad,
     kInstStore,
     kInstJump,
+    kInstCall,
+    kInstSetArg,
 } InstCode;
 
 typedef struct Inst {
@@ -23,4 +26,7 @@ typedef struct Block {
     List insts;
 } Block;
 
-#endif /* SRC_COMPILER_INSTS_H */
+void geninst_init();
+void geninst_run();
+
+#endif /* IMP_SRC_COMPILER_INSTS_H */

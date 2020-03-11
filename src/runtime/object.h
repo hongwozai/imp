@@ -24,6 +24,7 @@ enum ObjectType {
     kChar,
     kEof,
     kNil,
+    kPrimFunc,
     VALUE_TYPE_MAX,
 
     /* 对象类型排在后面 */
@@ -79,6 +80,9 @@ typedef struct StringObject {
     /* 本地存储，默认存储 */
     char buf[STRING_OBJECT_STATIC_SIZE];
 } StringObject;
+
+#define str_getsize(obj) (((StringObject*)(obj))->size)
+#define str_getcstr(obj) (((StringObject*)(obj))->buf)
 
 typedef struct ConsObject {
     Object head;

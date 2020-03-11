@@ -12,7 +12,7 @@ Node* node_new(Arena *arena, Opcode op)
     list_init(&node->uses);
     list_init(&node->ctrluses);
     node->attr.imm = 0;
-    node->next = NULL;
+    /* node->next = NULL; */
     return node;
 }
 
@@ -56,6 +56,35 @@ void node_replaceinput(Arena *arena, Node *self, bool isctrl,
     node_use(arena, other, self, index, isctrl);
 }
 
+/* 替代节点，替代使用层，替代控制层 */
+void node_vreplace(Arena *arena, Node *self, Node *other)
+{
+    Node *top = other;
+
+    /* 找到other最高的那个控制节点（也可能是自己），只跟随第一个控制节点 */
+    while (ptrvec_count(&top->ctrls) != 0) {
+        top = ptrvec_get(&top->ctrls, 0);
+    }
+
+    /* 将self的控制input转到other上 */
+    ptrvec_foreach(pos, &self->ctrls) {
+        Node *ctrlinput = ptrvec_get(&self->ctrls, pos);
+        node_addinput(arena, top, ctrlinput, true);
+    }
+
+    /* 将所有的ctrluses转到other上 */
+    list_foreach(pos, self->ctrluses.first) {
+        Use *use = container_of(pos, Use, link);
+        node_replaceinput(arena, use->node, true, use->index, other);
+    }
+
+    /* 将所有的uses转到other */
+    list_foreach(pos, self->uses.first) {
+        Use *use = container_of(pos, Use, link);
+        node_replaceinput(arena, use->node, false, use->index, other);
+    }
+}
+
 void node_dprint(FILE *out, Node *self)
 {
     fprintf(out, "(");
@@ -75,12 +104,31 @@ void node_dprint(FILE *out, Node *self)
     case kNodeRegion:
         fprintf(out, "Region");
         break;
+    case kNodeCall:
+        fprintf(out, "Call");
+        break;
+    case kNodeAdd:
+        fprintf(out, "Add");
+        break;
+    case kNodeLoad:
+        fprintf(out, "Load");
+        break;
+    case kNodeStore:
+        fprintf(out, "Store");
+        break;
+    case kNodeImm:
+        fprintf(out, "Imm");
+        break;
+    case kNodeLabel:
+        fprintf(out, "Label");
+        break;
     default:
         fprintf(out, "op%d", self->op);
     }
     if (!ptrvec_empty(&self->inputs)) {
         fprintf(out, " ");
     }
+
     /* inputs */
     ptrvec_foreach(iter, &self->inputs) {
         node_dprint(out, ptrvec_get(&self->inputs, iter));
@@ -94,6 +142,13 @@ void node_dprint(FILE *out, Node *self)
     case kNodeGlobalObj:
         fprintf(out, " ");
         print_object(out, self->attr.obj);
+        break;
+    case kNodeImm:
+        fprintf(out, " %ld", self->attr.imm);
+        break;
+    case kNodeLabel:
+        fprintf(out, " %s", self->attr.label.name);
+        break;
     default:
         break;
     }
