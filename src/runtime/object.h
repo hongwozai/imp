@@ -1,5 +1,5 @@
-#ifndef SRC_RUNTIME_OBJECT_H
-#define SRC_RUNTIME_OBJECT_H
+#ifndef IMP_SRC_RUNTIME_OBJECT_H
+#define IMP_SRC_RUNTIME_OBJECT_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -117,4 +117,4 @@ void print_object(FILE *out, Object *obj);
 bool equal_object(Object *one, Object *two);
 size_t hash_object(Object *one);
 
-#endif /* SRC_RUNTIME_OBJECT_H */
+#endif /* IMP_SRC_RUNTIME_OBJECT_H */

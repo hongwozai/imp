@@ -1,5 +1,5 @@
-#ifndef SRC_COMPILER_X64_X64_H
-#define SRC_COMPILER_X64_X64_H
+#ifndef IMP_SRC_COMPILER_TARGET_H
+#define IMP_SRC_COMPILER_TARGET_H
 
 #include <stddef.h>
 
@@ -28,4 +28,4 @@ typedef struct Target {
     void (*emit)(int op, ...);
 } Target;
 
-#endif /* SRC_COMPILER_X64_X64_H */
+#endif /* IMP_SRC_COMPILER_TARGET_H */

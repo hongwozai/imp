@@ -1,5 +1,5 @@
-#ifndef SRC_RUNTIME_GLOBAL_H
-#define SRC_RUNTIME_GLOBAL_H
+#ifndef IMP_SRC_RUNTIME_GLOBAL_H
+#define IMP_SRC_RUNTIME_GLOBAL_H
 
 #include "gc.h"
 
@@ -24,4 +24,4 @@ extern Object *imp_if;
 void global_init();
 void global_destroy();
 
-#endif /* SRC_RUNTIME_GLOBAL_H */
+#endif /* IMP_SRC_RUNTIME_GLOBAL_H */

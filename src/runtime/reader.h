@@ -1,5 +1,5 @@
-#ifndef SRC_RUNTIME_READER_H
-#define SRC_RUNTIME_READER_H
+#ifndef IMP_SRC_RUNTIME_READER_H
+#define IMP_SRC_RUNTIME_READER_H
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -16,4 +16,4 @@ bool reader_open(Reader *reader, const char *file);
 void reader_close(Reader *reader);
 Object *reader_read(Reader *reader);
 
-#endif /* SRC_RUNTIME_READER_H */
+#endif /* IMP_SRC_RUNTIME_READER_H */

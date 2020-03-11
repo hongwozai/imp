@@ -1,5 +1,5 @@
-#ifndef SRC_RUNTIME_GC_H
-#define SRC_RUNTIME_GC_H
+#ifndef IMP_SRC_RUNTIME_GC_H
+#define IMP_SRC_RUNTIME_GC_H
 
 #include "object.h"
 #include "utils/list.h"
@@ -34,4 +34,4 @@ void gc_sweep(GC *gc);
 Object* gc_create_string(GC *gc, const char *str, size_t size);
 Object* gc_create_symbol(GC *gc, const char *str, size_t size, bool isfix);
 
-#endif /* SRC_RUNTIME_GC_H */
+#endif /* IMP_SRC_RUNTIME_GC_H */

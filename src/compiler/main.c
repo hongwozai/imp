@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "analysis.h"
 #include "phase.h"
+#include "insts.h"
 #include "runtime/global.h"
 #include "runtime/reader.h"
 
@@ -26,6 +27,10 @@ int main(int argc, char *argv[])
 
     printf("\n");
     phase_run(&analy);
+
+    geninst_init();
+    geninst_run(&analy);
+    geninst_print();
 
     analysis_destroy(&analy);
     reader_close(&reader);

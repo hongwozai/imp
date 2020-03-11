@@ -91,7 +91,6 @@ static HashLink *get_internal(HashMap *map, void *key, size_t hash)
 HashLink* hashmap_get(HashMap *map, void *key)
 {
     size_t hash = map->hash(key) % map->bucket_size;
-
     return get_internal(map, key, hash);
 }
 
@@ -104,8 +103,12 @@ void rehash(HashMap *map, size_t newsize)
         newmap = (List*)malloc(newsize * sizeof(List));
     }
 
+    for (size_t i = 0; i < newsize; i++) {
+        list_init(&newmap[i]);
+    }
+
     for (size_t i = 0; i < map->bucket_size; i++) {
-        list_foreach(listlink, map->map[i].first) {
+        list_safe_foreach(listlink, iter, map->map[i].first) {
             size_t newhash = map->hash(
                 map->key(container_of(listlink, HashLink, link))
                 ) % newsize;

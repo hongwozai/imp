@@ -1,5 +1,5 @@
-#ifndef SRC_RUNTIME_PANIC_H
-#define SRC_RUNTIME_PANIC_H
+#ifndef IMP_SRC_RUNTIME_PANIC_H
+#define IMP_SRC_RUNTIME_PANIC_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,4 +9,4 @@
         exit(-1);                                                       \
     }
 
-#endif /* SRC_RUNTIME_PANIC_H */
+#endif /* IMP_SRC_RUNTIME_PANIC_H */
