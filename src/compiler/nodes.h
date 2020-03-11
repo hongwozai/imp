@@ -1,5 +1,5 @@
-#ifndef SRC_COMPILER_NODES_H
-#define SRC_COMPILER_NODES_H
+#ifndef IMP_SRC_COMPILER_NODES_H
+#define IMP_SRC_COMPILER_NODES_H
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -65,6 +65,7 @@ struct Node {
 };
 
 Node* node_new(Arena *arena, Opcode op);
+Node* node_walknew(Arena *arena, Opcode op, WalkMode mode);
 void  node_use(Arena *arena, Node *self, Node *usenode, size_t index, bool isctrl);
 void  node_unuse(Node *self, Node *other, size_t index, bool isctrl);
 void  node_addinput(Arena *arena, Node *self, Node *other, bool isctrl);
@@ -77,4 +78,4 @@ bool  node_isctrl(Node *self);
 void  node_remove(Node *self);
 void  node_verify(Node *self);
 
-#endif /* SRC_COMPILER_NODES_H */
+#endif /* IMP_SRC_COMPILER_NODES_H */

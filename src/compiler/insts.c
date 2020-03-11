@@ -234,6 +234,7 @@ void geninst_value(Phase *phase, AnalyFunction *analyfunc, Node *node)
             inst->dst.type      = kInstRegNone;
             list_append(&block->insts, &inst->link);
         }
+
         inst = arena_malloc(&giphase->arena, sizeof(Inst));
         list_link_init(&inst->link);
         inst->code          = kInstCall;
@@ -347,10 +348,14 @@ void geninst_print()
 {
     GenInstPhase *giphase = &geninst;
 
+    /* walk func */
     list_foreach(listlink, giphase->funclist.first) {
         GenInstFunc *func = container_of(listlink, GenInstFunc, link);
+        /* walk block */
         ptrvec_foreach(iter, &func->blockvec) {
             Block *block = ptrvec_get(&func->blockvec, iter);
+
+            /* walk inst */
             list_foreach(pos, block->insts.first) {
                 Inst *inst = container_of(pos, Inst, link);
                 inst_print(inst);
@@ -380,40 +385,42 @@ void inst_print(Inst *inst)
 {
     switch (inst->code) {
     case kInstLoadReg:
-        printf("LoadReg");
+        printf("%-12s", "LoadReg");
         break;
     case kInstLoadImm:
-        printf("LoadImm");
+        printf("%-12s", "LoadImm");
         break;
     case kInstLoadLabel:
-        printf("LoadLabel");
+        printf("%-12s", "LoadLabel");
         break;
     case kInstStore:
-        printf("Store");
+        printf("%-12s", "Store");
         break;
     case kInstJump:
-        printf("Jump");
+        printf("%-12s", "Jump");
         break;
     case kInstCall:
-        printf("Call");
+        printf("%-12s", "Call");
         break;
     case kInstSetArg:
-        printf("SetArg");
+        printf("%-12s", "SetArg");
         break;
     case kInstAdd:
-        printf("Add");
+        printf("%-12s", "Add");
         break;
     default:
-        printf("Unknown");
+        printf("%-12s", "Unknown");
         break;
     }
+    if (inst->dst.type != kInstRegNone) {
+        instreg_print(&inst->dst);
+    } else {
+        printf("%-3s", "");
+    }
+    printf(" <- ");
     printf(" ");
     instreg_print(&inst->operand1);
     printf(" ");
     instreg_print(&inst->operand2);
-    if (inst->dst.type != kInstRegNone) {
-        printf(" -> ");
-        instreg_print(&inst->dst);
-    }
     printf("\n");
 }

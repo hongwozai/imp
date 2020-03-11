@@ -1,5 +1,5 @@
-#ifndef SRC_COMPILER_ANALYSIS_H
-#define SRC_COMPILER_ANALYSIS_H
+#ifndef IMP_SRC_COMPILER_ANALYSIS_H
+#define IMP_SRC_COMPILER_ANALYSIS_H
 
 #include "nodes.h"
 #include "symtab.h"
@@ -34,4 +34,4 @@ void analysis_init(Analy *analy);
 void analysis_destroy(Analy *analy);
 void analysis_analy(Analy *analy, Object *obj);
 
-#endif /* SRC_COMPILER_ANALYSIS_H */
+#endif /* IMP_SRC_COMPILER_ANALYSIS_H */

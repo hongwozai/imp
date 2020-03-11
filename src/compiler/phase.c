@@ -36,14 +36,14 @@ static char *get_constname(Arena *arena)
 }
 
 static Node* construct_value_object(Phase *phase, AnalyFunction *analyfunc,
-                                    enum ObjectType type, Node *value)
+                                    enum ObjectType type, Node *value, WalkMode mode)
 {
     /**
      * <obj: (call gc_vnew type value)>
      */
-    Node *callnode = node_new(&analyfunc->arena, kNodeCall);
-    Node *gcnewnode = node_new(&analyfunc->arena, kNodeLabel);
-    Node *typenode = node_new(&analyfunc->arena, kNodeImm);
+    Node *callnode = node_walknew(&analyfunc->arena, kNodeCall, mode);
+    Node *gcnewnode = node_walknew(&analyfunc->arena, kNodeLabel, mode);
+    Node *typenode = node_walknew(&analyfunc->arena, kNodeImm, mode);
 
     gcnewnode->attr.label.name = arena_dup(&analyfunc->arena,
                                            "gc_vnew", sizeof("gc_vnew"));
@@ -59,7 +59,7 @@ static Node* construct_value_object(Phase *phase, AnalyFunction *analyfunc,
 }
 
 static Node* construct_labelvalue_object(Phase *phase, AnalyFunction *analyfunc,
-                                         enum ObjectType type,
+                                         enum ObjectType type, WalkMode mode,
                                          char *name,
                                          char *data,
                                          size_t datalen)
@@ -68,15 +68,15 @@ static Node* construct_labelvalue_object(Phase *phase, AnalyFunction *analyfunc,
      * <value: (load (label name))
      * (call gc_vnew type value)
      */
-    Node *label = node_new(&analyfunc->arena, kNodeLabel);
+    Node *label = node_walknew(&analyfunc->arena, kNodeLabel, mode);
     label->attr.label.name = arena_dup(&analyfunc->arena, name, strlen(name));
     label->attr.label.data = arena_dup(&analyfunc->arena, data, datalen);
     label->attr.label.datalen = datalen;
 
-    Node *load = node_new(&analyfunc->arena, kNodeLoad);
+    Node *load = node_walknew(&analyfunc->arena, kNodeLoad, mode);
     node_addinput(&analyfunc->arena, load, label, false);
 
-    return construct_value_object(phase, analyfunc, type, load);
+    return construct_value_object(phase, analyfunc, type, load, mode);
 }
 
 /* =========================================================== */
@@ -86,13 +86,14 @@ static Node* deobj_constobj(Phase *phase, AnalyFunction *analyfunc, Node *node)
 
     /* 仅数字判断下大小，创建立即数；其余常量同global，只是不extern */
     if (gettype(node->attr.obj) == kFixInt) {
-        temp = node_new(&analyfunc->arena, kNodeImm);
+        temp = node_walknew(&analyfunc->arena, kNodeImm, node->mode);
         temp->attr.imm = (size_t)getvalue(node->attr.obj).fixint;
-        temp = construct_value_object(phase, analyfunc, kFixInt, temp);
+        temp = construct_value_object(phase, analyfunc, kFixInt, temp, node->mode);
     } else if (gettype(node->attr.obj) < VALUE_TYPE_MAX) {
         Value v = getvalue(node->attr.obj);
         temp = construct_labelvalue_object(phase, analyfunc,
                                            gettype(node->attr.obj),
+                                           node->mode,
                                            get_constname(&analyfunc->arena),
                                            (char*)&v,
                                            sizeof(Value));
@@ -119,14 +120,14 @@ static void deobj_value(Phase *phase, AnalyFunction *analyfunc, Node *node)
 
     case kNodeGlobalObj: {
         /* label */
-        temp = node_new(&analyfunc->arena, kNodeLabel);
+        temp = node_walknew(&analyfunc->arena, kNodeLabel, node->mode);
         temp->attr.label.name = arena_dup(&analyfunc->arena,
                                           str_getcstr(sym_getname(node->attr.obj)),
                                           str_getsize(sym_getname(node->attr.obj)) + 1);
         temp->attr.label.data = 0;
         temp->attr.label.datalen = 0;
 
-        temp = construct_value_object(phase, analyfunc, kPrimFunc, temp);
+        temp = construct_value_object(phase, analyfunc, kPrimFunc, temp, node->mode);
         /* label node with global object name */
         node_vreplace(&analyfunc->arena, node, temp);
         break;
@@ -137,10 +138,10 @@ static void deobj_value(Phase *phase, AnalyFunction *analyfunc, Node *node)
         assert(ptrvec_count(&node->inputs) != 0);
 
         Node *funcobj = ptrvec_get(&node->inputs, 0);
-        Node *imm = node_new(&analyfunc->arena, kNodeImm);
+        Node *imm = node_walknew(&analyfunc->arena, kNodeImm, node->mode);
         imm->attr.imm = sizeof(Value);
 
-        Node *temp = node_new(&analyfunc->arena, kNodeLoad);
+        Node *temp = node_walknew(&analyfunc->arena, kNodeLoad, node->mode);
         node_addinput(&analyfunc->arena, temp, funcobj, false);
         node_addinput(&analyfunc->arena, temp, imm, false);
 
@@ -271,5 +272,5 @@ void phase_walk(Phase *phase, Analy *analy)
 void phase_run(Analy *analy)
 {
     phase_walk(&deobj_phase, analy);
-    phase_walk(&print_phase, analy);
+    /* phase_walk(&print_phase, analy); */
 }
