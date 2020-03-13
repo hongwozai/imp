@@ -5,6 +5,7 @@
 #include "runtime/reader.h"
 
 #include "phase/print_phase.h"
+#include "phase/deobj_phase.h"
 
 int main(int argc, char *argv[])
 {
@@ -27,6 +28,8 @@ int main(int argc, char *argv[])
     }
 
     printf("\n");
+    phase_run(deobj_phase, &analy);
+    /* phase_run(deobj_phase, &analy); */
     phase_run(print_phase, &analy);
     /* phase_run(print_phase, &analy); */
     /* phase_run(print_phase, &analy); */

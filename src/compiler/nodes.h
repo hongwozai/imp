@@ -74,7 +74,7 @@ struct Node {
 };
 
 Node* node_new(Arena *arena, Opcode op);
-void  node_setmode(Node* self, WalkMode mode);
+Node* node_newlabel(Arena *arena, char *name, char *data, size_t len);
 void  node_use(Arena *arena, Node *self, Node *usenode, size_t index, bool isctrl);
 void  node_unuse(Node *self, Node *other, size_t index, bool isctrl);
 void  node_addinput(Arena *arena, Node *self, Node *other, bool isctrl);
@@ -82,5 +82,10 @@ void  node_replaceinput(Arena *arena, Node *self, bool isctrl,
                         size_t index, Node *other);
 void  node_vreplace(Arena *arena, Node *self, Node *other);
 void  node_dprint(FILE *out, Node *self);
+
+static inline
+void  node_setmode(Node* self, WalkMode mode) { self->mode = mode; }
+static inline
+void  node_setop(Node* self, Opcode op) { self->op = op; }
 
 #endif /* IMP_SRC_COMPILER_NODES_H */

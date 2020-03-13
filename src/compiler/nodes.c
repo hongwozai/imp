@@ -16,9 +16,13 @@ Node* node_new(Arena *arena, Opcode op)
     return node;
 }
 
-void node_setmode(Node* self, WalkMode mode)
+Node* node_newlabel(Arena *arena, char *name, char *data, size_t len)
 {
-    self->mode = mode;
+    Node *label = node_new(arena, kNodeLabel);
+    label->attr.label.name = arena_dup(arena, name, strlen(name) + 1);
+    label->attr.label.data = arena_dup(arena, data, len);
+    label->attr.label.datalen = len;
+    return label;
 }
 
 void node_use(Arena *arena, Node *self, Node *usenode, size_t index, bool isctrl)
