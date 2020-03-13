@@ -7,6 +7,7 @@ set(CMAKE_C_STANDARD 99)
 aux_source_directory(src/utils DIR_UTILS)
 aux_source_directory(src/runtime DIR_RUNTIME)
 aux_source_directory(src/compiler DIR_COMPILER)
+aux_source_directory(src/compiler/phase DIR_COMPILER_PHASE)
 
 include_directories(src)
 add_definitions(-DUSE_TYPEOF)
@@ -19,6 +20,7 @@ add_executable(${PROJECT_NAME}_compiler
   ${DIR_RUNTIME}
   ${DIR_COMPILER}
   ${DIR_UTILS}
+  ${DIR_COMPILER_PHASE}
   )
 
 # 测试

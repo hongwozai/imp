@@ -47,9 +47,15 @@ typedef union NodeAttr {
 
 } NodeAttr;
 
+/**
+ * 入队了为Middle状态
+ * 子访问完为Visit状态(待参观的状态，等待子节点处理完了)
+ * 访问完自己是Bottom状态
+ */
 typedef enum WalkMode {
     kModeTop,
     kModeMiddle,
+    kModeVisit,
     kModeBottom,
 } WalkMode;
 
@@ -60,12 +66,15 @@ struct Node {
     List uses;
     List ctrluses;
     NodeAttr attr;
-    /* 用于遍历 */
+
+    /* 用于遍历，记录是否遍历完成 */
     WalkMode mode;
+    /* 用于记录遍历的中间节点 */
+    Node *next;
 };
 
 Node* node_new(Arena *arena, Opcode op);
-Node* node_walknew(Arena *arena, Opcode op, WalkMode mode);
+void  node_setmode(Node* self, WalkMode mode);
 void  node_use(Arena *arena, Node *self, Node *usenode, size_t index, bool isctrl);
 void  node_unuse(Node *self, Node *other, size_t index, bool isctrl);
 void  node_addinput(Arena *arena, Node *self, Node *other, bool isctrl);
@@ -73,9 +82,5 @@ void  node_replaceinput(Arena *arena, Node *self, bool isctrl,
                         size_t index, Node *other);
 void  node_vreplace(Arena *arena, Node *self, Node *other);
 void  node_dprint(FILE *out, Node *self);
-void  node_removeinput(Arena *arena, Node *self, size_t index, bool isctrl);
-bool  node_isctrl(Node *self);
-void  node_remove(Node *self);
-void  node_verify(Node *self);
 
 #endif /* IMP_SRC_COMPILER_NODES_H */

@@ -6,28 +6,19 @@ Node* node_new(Arena *arena, Opcode op)
 {
     Node *node = arena_malloc(arena, sizeof(Node));
     node->op = op;
-    node->mode = kModeTop;
     ptrvec_init(arena, &node->inputs, 0);
     ptrvec_init(arena, &node->ctrls, 2);
     list_init(&node->uses);
     list_init(&node->ctrluses);
     node->attr.imm = 0;
-    /* node->next = NULL; */
+    node->mode = kModeTop;
+    node->next = NULL;
     return node;
 }
 
-Node* node_walknew(Arena *arena, Opcode op, WalkMode mode)
+void node_setmode(Node* self, WalkMode mode)
 {
-    Node *node = arena_malloc(arena, sizeof(Node));
-    node->op = op;
-    node->mode = mode;
-    ptrvec_init(arena, &node->inputs, 0);
-    ptrvec_init(arena, &node->ctrls, 2);
-    list_init(&node->uses);
-    list_init(&node->ctrluses);
-    node->attr.imm = 0;
-    /* node->next = NULL; */
-    return node;
+    self->mode = mode;
 }
 
 void node_use(Arena *arena, Node *self, Node *usenode, size_t index, bool isctrl)
