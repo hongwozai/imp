@@ -21,7 +21,7 @@ void  arena_init(Arena *arena, size_t reserved);
 void* arena_malloc(Arena *arena, size_t nbytes);
 void  arena_dispose(Arena *arena);
 
-static inline void* arena_dup(Arena *arena, void *buf, size_t nbytes)
+static inline void* arena_dup(Arena *arena, const char *buf, size_t nbytes)
 {
     void *mem = arena_malloc(arena, nbytes);
     if (!mem) {

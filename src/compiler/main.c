@@ -7,6 +7,9 @@
 #include "phase/print_phase.h"
 #include "phase/deobj_phase.h"
 
+#include "backend/module.h"
+#include "backend/instgen.h"
+
 int main(int argc, char *argv[])
 {
     Reader reader;
@@ -29,11 +32,10 @@ int main(int argc, char *argv[])
 
     printf("\n");
     phase_run(deobj_phase, &analy);
-    /* phase_run(deobj_phase, &analy); */
-    phase_run(print_phase, &analy);
-    /* phase_run(print_phase, &analy); */
     /* phase_run(print_phase, &analy); */
 
+    Module module;
+    instgen_run(&analy, &module);
     /* geninst_init(); */
     /* geninst_run(&analy); */
     /* geninst_print(); */

@@ -2,6 +2,7 @@
 #define IMP_SRC_COMPILER_NODES_H
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include "ptrvec.h"
 #include "utils/list.h"
@@ -35,7 +36,7 @@ typedef struct Use {
 } Use;
 
 typedef union NodeAttr {
-    ssize_t imm;
+    intptr_t imm;
     Object *obj;
     Node *node;
 
@@ -66,11 +67,12 @@ struct Node {
     List uses;
     List ctrluses;
     NodeAttr attr;
-
     /* 用于遍历，记录是否遍历完成 */
     WalkMode mode;
     /* 用于记录遍历的中间节点 */
     Node *next;
+    /* 用于存储数据，避免映射表 */
+    void *data;
 };
 
 Node* node_new(Arena *arena, Opcode op);

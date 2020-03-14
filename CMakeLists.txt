@@ -8,6 +8,7 @@ aux_source_directory(src/utils DIR_UTILS)
 aux_source_directory(src/runtime DIR_RUNTIME)
 aux_source_directory(src/compiler DIR_COMPILER)
 aux_source_directory(src/compiler/phase DIR_COMPILER_PHASE)
+aux_source_directory(src/compiler/backend DIR_COMPILER_BACKEND)
 
 include_directories(src)
 add_definitions(-DUSE_TYPEOF)
@@ -21,6 +22,7 @@ add_executable(${PROJECT_NAME}_compiler
   ${DIR_COMPILER}
   ${DIR_UTILS}
   ${DIR_COMPILER_PHASE}
+  ${DIR_COMPILER_BACKEND}
   )
 
 # 测试

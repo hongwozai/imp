@@ -13,6 +13,7 @@ Node* node_new(Arena *arena, Opcode op)
     node->attr.imm = 0;
     node->mode = kModeTop;
     node->next = NULL;
+    node->data = NULL;
     return node;
 }
 
