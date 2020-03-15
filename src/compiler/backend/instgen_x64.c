@@ -74,6 +74,7 @@ static void genload(ModuleFunc *func, Node *node, Node **stack)
 {
     assert(ptrvec_count(&node->inputs) != 0);
 
+    InstGenData *data = markrule(func, node);
     Node *child = ptrvec_get(&node->inputs, 0);
 
     /* bingo! (Load (Add reg imm)) */
@@ -87,7 +88,6 @@ static void genload(ModuleFunc *func, Node *node, Node **stack)
             Node *imm = (left->op == kNodeImm) ? left : right;
             Node *reg = (left->op == kNodeImm) ? right : left;
 
-            InstGenData *data = markrule(func, node);
             Inst *inst = newinst3v(&func->arena, "mov $%ld(%%1), %%r",
                                    vreg_placeholder(), vreg_unused(),
                                    data->vreg,
@@ -108,7 +108,6 @@ static void genload(ModuleFunc *func, Node *node, Node **stack)
     }
 
     /* bingo! (Load reg) */
-    InstGenData *data = markrule(func, node);
     Inst *inst = newinst3v(&func->arena, "mov (%%1), %%r",
                            vreg_placeholder(), vreg_unused(),
                            data->vreg);
@@ -120,7 +119,6 @@ static void genload(ModuleFunc *func, Node *node, Node **stack)
         child->next = *stack;
         *stack = child;
     }
-
 }
 
 /**
@@ -143,6 +141,7 @@ static bool matchargs(ModuleFunc *func, Node *node, size_t iter,
     /* TODO: 处理参数 */
     switch (node->op) {
     case kNodeImm: {
+        /* INST0(func, data, "mov $%ld, %s", node->attr.imm, argreg); */
         Inst *inst = newinst3v(&func->arena,
                                "mov $%ld, %s",
                                vreg_unused(), vreg_unused(), vreg_unused(),
