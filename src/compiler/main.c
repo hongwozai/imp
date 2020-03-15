@@ -7,7 +7,7 @@
 #include "phase/print_phase.h"
 #include "phase/deobj_phase.h"
 
-#include "backend/module.h"
+#include "backend/insts.h"
 #include "backend/instgen.h"
 
 int main(int argc, char *argv[])

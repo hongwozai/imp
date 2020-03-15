@@ -1,4 +1,6 @@
 #include "instgen.h"
+#include "instgen_internal.h"
+#include "instgen_x64.h"
 
 static char *block_getname(Arena *arena)
 {
@@ -52,32 +54,37 @@ static ModuleLabel* newlabel(Arena *arena, char *name, char *data, char *len)
     return NULL;
 }
 
-extern void instgen_x64(ModuleFunc *func, Block *block, Node *node);
-static void instgen(ModuleFunc *func, Block *block, Node *node)
-{
-    assert(!node->data);
-    node_dprint(stdout, node);
-    fprintf(stdout, "\n");
-    instgen_x64(func, block, node);
-}
+static void walk_node(ModuleFunc *func, Block *block, Node *node);
 
+/**
+ * 遍历控制流，依次生成指令
+ */
 static void walk_block(Module *module, ModuleFunc *func, Block *block)
 {
-    Node *first = block->region->attr.node;
-    first->next = NULL;
+    Arena arena;
+    NodeList *list;
+
+    arena_init(&arena, 1024);
+    list = nodelist_new(&arena, block->region->attr.node, NULL);
 
     /* 跟随控制流，按控制流的顺序进行操作 */
-    while (ptrvec_count(&first->ctrls) != 0) {
-        Node *temp = ptrvec_get(&first->ctrls, 0);
-        temp->next = first;
-        first = temp;
+    Node *curr = list->node;
+    while (ptrvec_count(&curr->ctrls) != 0) {
+        curr = ptrvec_get(&curr->ctrls, 0);
+        list = nodelist_new(&arena, curr, list);
     }
 
-    for (Node *temp = first; temp != NULL; temp = temp->next) {
-        instgen(func, block, temp);
+    /* 按照控制流顺序遍历 */
+    for (NodeList *temp = list; temp != NULL; temp = temp->next) {
+        walk_node(func, block, temp->node);
     }
+
+    arena_dispose(&arena);
 }
 
+/**
+ * 该函数处理生成CFG
+ */
 static void walk_func(Module *module, ModuleFunc *func, AnalyFunction *analyfunc)
 {
     /* 遍历所有的region */
@@ -153,5 +160,85 @@ void instgen_run(Analy *analy, Module *module)
             Block *block = ptrvec_get(&func->blocks, iter);
             walk_block(module, func, block);
         }
+    }
+}
+
+/* ========================================================= */
+static bool isvisiting(Node *node) { return node->mode == kModeVisit; }
+
+static void setvisiting(Node *node) { node->mode = kModeVisit; }
+
+static void setmiddle(Node *node)
+{
+    node->mode = kModeMiddle;
+}
+
+static bool ismiddle(Node *node)
+{
+    return node->mode == kModeMiddle;
+}
+
+static bool isvisited(WalkMode currmode, Node *node)
+{
+    return node->mode == (currmode == kModeTop ? kModeBottom : kModeTop);
+}
+
+static void setvisited(WalkMode currmode, Node *node)
+{
+    /* 这里的访问是包括子节点也访问过 */
+    node->mode = (currmode == kModeTop) ? kModeBottom : kModeTop;
+}
+
+bool instgen_isqueue(Node *node)
+{
+    return ismiddle(node) || isvisiting(node);
+}
+
+/**
+ * 这里区分平台
+ */
+static void walk_node(ModuleFunc *func, Block *block, Node *node)
+{
+    Node *first = node;
+    WalkMode currmode = node->mode;
+    InstGenOp *ops = instgenop_x64;
+
+    if (isvisited(kModeBottom, first)) {
+        return;
+    } else {
+        first->next = NULL;
+        setmiddle(first);
+    }
+
+    while (first) {
+        Node *curr = first;
+
+        if (isvisiting(curr)) {
+            /* need emit */
+            ops[first->op].emit(func, block, curr);
+
+            first = first->next;
+            setvisited(currmode, curr);
+            continue;
+        } else if (isvisited(currmode, curr)) {
+            first = first->next;
+            continue;
+        }
+
+        assert(ismiddle(curr));
+
+        /* 遍历获取下一步向栈中加入的元素 */
+        Node *start = NULL, *last = NULL;
+        ops[first->op].gen(func, curr, &start);
+
+        for (Node *temp = start; temp != NULL; temp = temp->next) {
+            setmiddle(temp);
+            last = temp;
+        }
+        if (start) {
+            last->next = first;
+            first = start;
+        }
+        setvisiting(curr);
     }
 }
