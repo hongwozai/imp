@@ -12,6 +12,15 @@ static char *block_getname(Arena *arena)
     return arena_dup(arena, buf, len);
 }
 
+static void nodelist_push(Arena *arena, List *list, Node *node)
+{
+    NodeList *first = arena_malloc(arena, sizeof(NodeList));
+    list_link_init(&first->link);
+    first->node = node;
+
+    list_push(list, &first->link);
+}
+
 static Block *newblock(ModuleFunc *func, Node *region)
 {
     Block *block = arena_malloc(&func->arena, sizeof(Block));
@@ -62,20 +71,22 @@ static void walk_node(ModuleFunc *func, Block *block, Node *node);
 static void walk_block(Module *module, ModuleFunc *func, Block *block)
 {
     Arena arena;
-    NodeList *list;
+    List stack;
 
     arena_init(&arena, 1024);
-    list = nodelist_new(&arena, block->region->attr.node, NULL);
+    list_init(&stack);
+    nodelist_push(&arena, &stack, block->region->attr.node);
 
     /* 跟随控制流，按控制流的顺序进行操作 */
-    Node *curr = list->node;
+    Node *curr = container_of(stack.first, NodeList, link)->node;
     while (ptrvec_count(&curr->ctrls) != 0) {
         curr = ptrvec_get(&curr->ctrls, 0);
-        list = nodelist_new(&arena, curr, list);
+        nodelist_push(&arena, &stack, curr);
     }
 
     /* 按照控制流顺序遍历 */
-    for (NodeList *temp = list; temp != NULL; temp = temp->next) {
+    list_foreach(pos, stack.first) {
+        NodeList *temp = container_of(pos, NodeList, link);
         walk_node(func, block, temp->node);
     }
 
