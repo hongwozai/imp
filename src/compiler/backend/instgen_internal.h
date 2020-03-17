@@ -36,6 +36,9 @@ typedef struct InstGenOp {
     void (*emit)(ModuleFunc *func, Block *block, Node *node);
 } InstGenOp;
 
+/* Inst* (*instgen_spill)(ModuleFunc *func, Block *block, */
+/*                TargetReg *op1, TargetReg *op2, TargetReg *dst); */
+
 bool instgen_isqueue(Node *node);
 
 #endif /* IMP_SRC_COMPILER_BACKEND_INSTGEN_INTERNAL_H */

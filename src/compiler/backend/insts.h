@@ -21,7 +21,9 @@ enum InstRegPos {
 
 typedef struct Inst {
     ListLink link;
+    /* 指令内容 */
     char *desc;
+    /* 使用的寄存器 */
     bool isvirtual;
     union {
         /* operand1 [operand2] dst */
@@ -32,12 +34,18 @@ typedef struct Inst {
 } Inst;
 
 typedef struct Block {
+    /* 名称，生成时的标签 */
     char *name;
+    /* 指令 */
+    List insts;
+    /* 前驱后继 */
     PtrVec preds;
     PtrVec succs;
-    List insts;
     /* 该block对应的region */
     Node *region;
+    /* 遍历使用 */
+    size_t id;
+    ListLink link;
 } Block;
 
 typedef struct ModuleFunc {
@@ -45,7 +53,7 @@ typedef struct ModuleFunc {
     Arena arena;
     PtrVec blocks;
     Block *start;
-    /* 总共使用了多少寄存器 */
+    /* 总共使用了多少寄存器（可能有空洞） */
     size_t vregindex;
 } ModuleFunc;
 
@@ -64,6 +72,9 @@ typedef struct Module {
 
 Inst* inst_newv(Arena *arena, const char *desc,
                 VirtualReg operand1, VirtualReg operand2, VirtualReg dst);
+
+Inst* inst_new(Arena *arena, const char *desc,
+               TargetReg *op1, TargetReg *op2, TargetReg *dst);
 
 void inst_dprint(FILE *out, Inst *inst);
 

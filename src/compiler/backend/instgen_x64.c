@@ -260,7 +260,7 @@ static void gencall(ModuleFunc *func, Node *node, Node **stack)
     } else {
         /* (Call vreg ...) */
         EMIT(&func->arena, data,
-             "call %%1",
+             "call *%%1",
              vreg_placeholder(), vreg_unused(), vreg_unused());
 
         nodelist_append(&func->arena, &data->nodelist,  funcnode);
@@ -356,6 +356,6 @@ static void emit(ModuleFunc *func, Block *block, Node *node)
         list_append(&block->insts, &inst->link);
 
         /* debug */
-        inst_dprint(stdout, inst);
+        /* inst_dprint(stdout, inst); */
     }
 }

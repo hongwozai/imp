@@ -63,6 +63,7 @@ static inline void* ptrvec_get(PtrVec *vec, size_t index)
 
 static inline void* ptrvec_set(PtrVec *vec, size_t index, void *elem)
 {
+    assert(index < vec->count);
     void *old = vec->elems[index];
     vec->elems[index] = elem;
     return old;

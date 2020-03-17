@@ -13,6 +13,19 @@ Inst* inst_newv(Arena *arena, const char *desc,
     return inst;
 }
 
+Inst* inst_new(Arena *arena, const char *desc,
+               TargetReg *op1, TargetReg *op2, TargetReg *dst)
+{
+    Inst *inst = arena_malloc(arena, sizeof(Inst));
+    list_link_init(&inst->link);
+    inst->desc = arena_dup(arena, desc, strlen(desc) + 1);
+    inst->isvirtual = false;
+    inst->u.reg[kInstOperand1] = op1;
+    inst->u.reg[kInstOperand2] = op2;
+    inst->u.reg[kInstDst] = dst;
+    return inst;
+}
+
 /**
  * 固定用%1,%2,%r来代替寄存器
  * %1 operand1
@@ -27,7 +40,7 @@ void inst_dprint(FILE *out, Inst *inst)
     size_t len = 0;
 
     buf[len] = '\0';
-    for (char *p = inst->desc; *p != NULL; p++) {
+    for (char *p = inst->desc; *p != '\0'; p++) {
         if (isswitch) {
             int pos = -1;
             switch (*p) {
@@ -45,7 +58,11 @@ void inst_dprint(FILE *out, Inst *inst)
                 isswitch = false;
                 continue;
             }
-            len += sprintf(buf + len, "v%d", inst->u.vreg[pos]);
+            if (inst->isvirtual) {
+                len += sprintf(buf + len, "v%d", inst->u.vreg[pos]);
+            } else {
+                len += sprintf(buf + len, "%s", inst->u.reg[pos]->rep);
+            }
             isswitch = false;
             continue;
         }

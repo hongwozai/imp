@@ -6,22 +6,24 @@
 #include "utils/arena.h"
 
 typedef struct TargetReg {
-    const char *name;
+    int id;
     const char *rep;
-    const char *rep64;
-    const char *rep32;
-    const char *rep16;
-    const char *rep8;
     enum {
         kCalleeSave,
         kCallerSave,
+        /* 自由寄存器 */
         kFreeReg,
+        /* 用作参数的寄存器 */
         kArg,
+        /* 栈指针 */
+        kStackPointer,
+        /* 栈基址指针 */
+        kStackBasePointer,
     } type;
 } TargetReg;
 
 typedef struct Target {
-    /* 寄存器大小 */
+    /* 寄存器大小，单位字节 */
     size_t regsize;
     /* 寄存器个数 */
     size_t regnum;
@@ -29,8 +31,8 @@ typedef struct Target {
     TargetReg *regs;
 
     /* 立即数的范围 */
-    /* ssize_t imm_min; */
-    /* ssize_t imm_max; */
+    intptr_t imm_min;
+    intptr_t imm_max;
 } Target;
 
 #endif /* IMP_SRC_COMPILER_TARGET_H */

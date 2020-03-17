@@ -30,8 +30,9 @@ static Block *newblock(ModuleFunc *func, Node *region)
     list_init(&block->insts);
     block->region = region;
     block->name = block_getname(&func->arena);
+    list_link_init(&block->link);
 
-    ptrvec_add(&func->arena, &func->blocks, block);
+    block->id = ptrvec_add(&func->arena, &func->blocks, block);
     return block;
 }
 
@@ -110,6 +111,10 @@ static void walk_func(Module *module, ModuleFunc *func, AnalyFunction *analyfunc
         first = first->next;
 
         Block *currblock = (Block*)curr->data;
+
+        if (ptrvec_count(&curr->ctrls) == 0) {
+            func->start = currblock;
+        }
 
         ptrvec_foreach(iter, &curr->ctrls) {
             Node * parent = ptrvec_get(&curr->ctrls, iter);

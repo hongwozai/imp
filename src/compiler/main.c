@@ -9,6 +9,7 @@
 
 #include "backend/insts.h"
 #include "backend/instgen.h"
+#include "backend/ra.h"
 
 int main(int argc, char *argv[])
 {
@@ -36,9 +37,7 @@ int main(int argc, char *argv[])
 
     Module module;
     instgen_run(&analy, &module);
-    /* geninst_init(); */
-    /* geninst_run(&analy); */
-    /* geninst_print(); */
+    ra_run(&module);
 
     analysis_destroy(&analy);
     reader_close(&reader);
