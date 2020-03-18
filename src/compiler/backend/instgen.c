@@ -59,17 +59,26 @@ static ModuleFunc* newfunc(Module *module)
     return func;
 }
 
-static ModuleLabel* newlabel(Arena *arena, char *name, char *data, char *len)
+static ModuleLabel* newlabel(Arena *arena, char *name, char *data, size_t len)
 {
-    return NULL;
+    ModuleLabel *label = arena_malloc(arena, sizeof(ModuleLabel));
+    list_link_init(&label->link);
+    label->name = arena_dup(arena, name, strlen(name) + 1);
+    label->data = arena_dup(arena, data, len);
+    label->len = len;
+    return label;
 }
 
-static void walk_node(ModuleFunc *func, Block *block, Node *node);
+static void walk_node(Module *module, ModuleFunc *func, Block *block, Node *node);
+
+static void walk_label(Module *module, ModuleFunc *func, Block *block, Node *node);
 
 /**
  * 遍历控制流，依次生成指令
  */
-static void walk_block(Module *module, ModuleFunc *func, Block *block)
+static void walk_block(Module *module, ModuleFunc *func, Block *block,
+                       void (*walk)(Module *module, ModuleFunc *func,
+                                    Block *block, Node *node))
 {
     Arena arena;
     List stack;
@@ -88,7 +97,7 @@ static void walk_block(Module *module, ModuleFunc *func, Block *block)
     /* 按照控制流顺序遍历 */
     list_foreach(pos, stack.first) {
         NodeList *temp = container_of(pos, NodeList, link);
-        walk_node(func, block, temp->node);
+        walk(module, func, block, temp->node);
     }
 
     arena_dispose(&arena);
@@ -174,7 +183,10 @@ void instgen_run(Analy *analy, Module *module)
 
         ptrvec_foreach(iter, &func->blocks) {
             Block *block = ptrvec_get(&func->blocks, iter);
-            walk_block(module, func, block);
+            /* label生成 */
+            walk_block(module, func, block, walk_label);
+            /* 由于代码生成时会破坏当前遍历结构，所以必须在最后 */
+            walk_block(module, func, block, walk_node);
         }
     }
 }
@@ -213,13 +225,13 @@ bool instgen_isqueue(Node *node)
 /**
  * 这里区分平台
  */
-static void walk_node(ModuleFunc *func, Block *block, Node *node)
+static void walk_node(Module *module, ModuleFunc *func, Block *block, Node *node)
 {
     Node *first = node;
     WalkMode currmode = node->mode;
     InstGenOp *ops = instgenop_x64;
 
-    if (isvisited(kModeBottom, first)) {
+    if (isvisited(currmode, first)) {
         return;
     } else {
         first->next = NULL;
@@ -229,6 +241,9 @@ static void walk_node(ModuleFunc *func, Block *block, Node *node)
     while (first) {
         Node *curr = first;
 
+        /**
+         * 这里会有一部分没有遍历到的节点没有设置状态
+         */
         if (isvisiting(curr)) {
             /* need emit */
             ops[first->op].emit(func, block, curr);
@@ -256,5 +271,44 @@ static void walk_node(ModuleFunc *func, Block *block, Node *node)
             first = start;
         }
         setvisiting(curr);
+    }
+}
+
+static void walk_label(Module *module, ModuleFunc *func, Block *block, Node *node)
+{
+    Node *first = node;
+    WalkMode currmode = node->mode;
+    first->next = NULL;
+
+    if (isvisited(currmode, first)) {
+        return;
+    }
+
+    /* 收集使用的label */
+    while (first) {
+        Node *curr = first;
+        first = first->next;
+        setvisited(currmode, curr);
+
+        if (curr->op == kNodeLabel &&
+            curr->attr.label.datalen != 0) {
+            ModuleLabel *label =
+                newlabel(&module->arena,
+                         curr->attr.label.name,
+                         curr->attr.label.data,
+                         curr->attr.label.datalen);
+            list_append(&module->labels, &label->link);
+            continue;
+        }
+
+        /* 控制流走过了这个就不在走控制流了 */
+        ptrvec_foreach(iter, &curr->inputs) {
+            Node *parent = ptrvec_get(&curr->inputs, iter);
+
+            if (!isvisited(currmode, parent)) {
+                parent->next = first;
+                first = parent;
+            }
+        }
     }
 }

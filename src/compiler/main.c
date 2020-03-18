@@ -10,6 +10,7 @@
 #include "backend/insts.h"
 #include "backend/instgen.h"
 #include "backend/ra.h"
+#include "backend/genasm.h"
 
 int main(int argc, char *argv[])
 {
@@ -24,7 +25,7 @@ int main(int argc, char *argv[])
     analysis_init(&analy);
     while (true) {
         obj = reader_read(&reader);
-        print_object(stdout, obj);
+        /* print_object(stdout, obj); */
         if (gettype(obj) == kEof) {
             break;
         }
@@ -37,9 +38,11 @@ int main(int argc, char *argv[])
 
     Module module;
     instgen_run(&analy, &module);
-    ra_run(&module);
-
     analysis_destroy(&analy);
+
+    ra_run(&module);
+    genasm_run(stdout, &module);
+
     reader_close(&reader);
     global_destroy();
     return 0;

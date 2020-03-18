@@ -10,15 +10,21 @@ aux_source_directory(src/compiler DIR_COMPILER)
 aux_source_directory(src/compiler/phase DIR_COMPILER_PHASE)
 aux_source_directory(src/compiler/backend DIR_COMPILER_BACKEND)
 
+set(DIR_RUNTIME_NOMAIN ${DIR_RUNTIME})
+
+list(FILTER DIR_RUNTIME_NOMAIN
+  EXCLUDE REGEX runtime\.c
+  )
+
 include_directories(src)
 add_definitions(-DUSE_TYPEOF)
 add_definitions(-Wall -g3)
 
 message("message : ${DIR_SRC}")
-add_library(${PROJECT_NAME}_runtime SHARED ${DIR_RUNTIME} ${DIR_UTILS})
+add_library(${PROJECT_NAME}_runtime STATIC ${DIR_RUNTIME} ${DIR_UTILS})
 
 add_executable(${PROJECT_NAME}_compiler
-  ${DIR_RUNTIME}
+  ${DIR_RUNTIME_NOMAIN}
   ${DIR_COMPILER}
   ${DIR_UTILS}
   ${DIR_COMPILER_PHASE}
@@ -46,11 +52,11 @@ add_executable(gc_test
   src/runtime/gc.c
   test/runtime/gc_test.c
   )
-add_executable(runtime_test
-  ${DIR_RUNTIME}
-  ${DIR_UTILS}
-  test/runtime/runtime_test.c
-  )
+# add_executable(runtime_test
+#   ${DIR_RUNTIME}
+#   ${DIR_UTILS}
+#   test/runtime/runtime_test.c
+#   )
 
 enable_testing()
 
@@ -60,4 +66,4 @@ add_test(bit_test bit_test)
 add_test(buffer_test buffer_test)
 add_test(hashmap_test hashmap_test)
 add_test(gc_test gc_test)
-add_test(runtime_test runtime_test ${PROJECT_SOURCE_DIR}/test/runtime1.scm)
+# add_test(runtime_test runtime_test ${PROJECT_SOURCE_DIR}/test/runtime1.scm)

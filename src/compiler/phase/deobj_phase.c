@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "compiler/nodes.h"
 #include "deobj_phase.h"
+#include "compiler/mangle.h"
 
 static void setmode(Phase *phase, Node *node)
 {
@@ -14,18 +15,20 @@ static char *const_getname(Arena *arena)
     /* 64为位足够使用，所以这里不担心其错误码 */
     char buf[64];
     size_t len = snprintf(buf, sizeof(buf), ".const%lu", const_num++);
-    return arena_dup(arena, buf, len);
+    buf[len] = '\0';
+    return arena_dup(arena, buf, len + 1);
 }
 
 
 static Node* convobj(Phase *phase, AnalyFunction *func,
                      enum ObjectType type, Node *value)
 {
-    /* <obj: (call gc_vnew type value)> */
+    /* <obj: (call _runtime_newv type value)> */
     Node *gcnewnode =
         node_newlabel(
             &func->arena,
-            arena_dup(&func->arena, "gc_vnew", sizeof("gc_vnew")),
+            arena_dup(&func->arena, "_runtime_newv",
+                      sizeof("_runtime_newv")),
             0,
             0
             );
@@ -39,6 +42,40 @@ static Node* convobj(Phase *phase, AnalyFunction *func,
     node_addinput(&func->arena, callnode, gcnewnode, false);
     node_addinput(&func->arena, callnode, typenode, false);
     node_addinput(&func->arena, callnode, value, false);
+    setmode(phase, callnode);
+    return callnode;
+}
+
+static Node* constrobj(Phase *phase, AnalyFunction *func,
+                       Node *str)
+{
+    /* <obj: (call _runtime_newstr label size)> */
+    Node *gcnewnode =
+        node_newlabel(
+            &func->arena,
+            arena_dup(&func->arena, "_runtime_newstr",
+                      sizeof("_runtime_newstr")),
+            0,
+            0
+            );
+    setmode(phase, gcnewnode);
+
+    Node *context =
+        node_newlabel(&func->arena,
+                      const_getname(&func->arena),
+                      str_getcstr(str->attr.obj),
+                      str_getsize(str->attr.obj));
+
+    setmode(phase, context);
+
+    Node *imm = node_new(&func->arena, kNodeImm);
+    setmode(phase, imm);
+    imm->attr.imm = str_getsize(str->attr.obj);
+
+    Node *callnode = node_new(&func->arena, kNodeCall);
+    node_addinput(&func->arena, callnode, gcnewnode, false);
+    node_addinput(&func->arena, callnode, context, false);
+    node_addinput(&func->arena, callnode, imm, false);
     setmode(phase, callnode);
     return callnode;
 }
@@ -60,17 +97,19 @@ static Node* deconstobj(Phase *phase, AnalyFunction *func, Node *node)
     if (gettype(node->attr.obj) < VALUE_TYPE_MAX) {
         /* <value: (load (label name)) */
         Node *label =
-            node_newlabel(
-                &func->arena,
-                const_getname(&func->arena),
-                (char*)&getvalue(node->attr.obj),
-                sizeof(Value)
-                );
+            node_newlabel(&func->arena,
+                          const_getname(&func->arena),
+                          (char*)&getvalue(node->attr.obj),
+                          sizeof(Value));
         setmode(phase, label);
 
         Node *load = node_new(&func->arena, kNodeLoad);
         setmode(phase, load);
         return convobj(phase, func, gettype(node->attr.obj), load);
+    }
+
+    if (gettype(node->attr.obj) == kString) {
+        return constrobj(phase, func, node);
     }
 
     /* 各种复合类型等 */
@@ -108,8 +147,10 @@ Node *deglobalobj(Phase *phase, AnalyFunction *func, Node *node)
     /**
      * 目前只支持函数
      */
+    char *name = mangle(&func->arena,
+                        str_getcstr(sym_getname(node->attr.obj)));
     Node *label = node_newlabel(&func->arena,
-                                str_getcstr(sym_getname(node->attr.obj)),
+                                name,
                                 0,
                                 0);
     setmode(phase, label);

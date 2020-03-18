@@ -130,7 +130,7 @@ static void genload(ModuleFunc *func, Node *node, Node **stack)
             Node *imm = (left->op == kNodeImm) ? left : right;
             Node *reg = (left->op == kNodeImm) ? right : left;
 
-            EMIT(&func->arena, data, "mov $%ld(%%1), %%r",
+            EMIT(&func->arena, data, "mov %ld(%%1), %%r",
                  vreg_placeholder(), vreg_unused(), data->vreg,
                  imm->attr.imm);
             nodelist_append(&func->arena, &data->nodelist, reg);

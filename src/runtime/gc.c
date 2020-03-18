@@ -61,13 +61,6 @@ Object *gc_new(GC *gc, enum ObjectType type, size_t size)
     return obj;
 }
 
-Object *gc_vnew(GC *gc, enum ObjectType type, union Value value)
-{
-    Object *obj = gc_new(gc, type, sizeof(ValueObject));
-    ((ValueObject*)obj)->value = value;
-    return obj;
-}
-
 void gc_linkgrey(GC *gc, Object *obj)
 {
     if (getmark(obj) == kGrey) {
