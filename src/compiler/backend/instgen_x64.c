@@ -91,10 +91,19 @@ static void markused(ModuleFunc *func, Node *node)
 }
 
 /**
+ * 使用场景：
+ * 是否可以往队列中插入
+ */
+static bool isneedhandle(Node *node)
+{
+    return !instgen_isqueue(node) && !node->data;
+}
+
+/**
  * 该函数使用场景：
  * 在判断子节点是否可以与当前节点为一个覆盖(无人处理的节点)
  */
-static bool isneedhandle(Node *node)
+static bool iscover(Node *node)
 {
     assert(node->data
            ? ((InstGenData*)node->data)->type != kInstDataUsed
@@ -113,7 +122,7 @@ static void genload(ModuleFunc *func, Node *node, Node **stack)
     Node *child = ptrvec_get(&node->inputs, 0);
 
     /* bingo! (Load (Add reg imm)) */
-    if (child->op == kNodeAdd && isneedhandle(child)) {
+    if (child->op == kNodeAdd && iscover(child)) {
         /* (Add reg imm) or (Add imm reg) */
         assert(ptrvec_count(&child->inputs) == 2);
 
@@ -124,8 +133,8 @@ static void genload(ModuleFunc *func, Node *node, Node **stack)
          * 继续进行树覆盖时，必须保证接下来的节点可处理
          * 不可处理的节点一定是在队列中已经化为了其他节点的处理对象
          */
-        if ((left->op == kNodeImm && isneedhandle(left)) ||
-            (right->op == kNodeImm && isneedhandle(left))) {
+        if ((left->op == kNodeImm && iscover(left)) ||
+            (right->op == kNodeImm && iscover(left))) {
 
             Node *imm = (left->op == kNodeImm) ? left : right;
             Node *reg = (left->op == kNodeImm) ? right : left;
@@ -234,7 +243,7 @@ static void gencall(ModuleFunc *func, Node *node, Node **stack)
         if (argindex == 0) {
             funcnode = parent;
 
-            if (parent->op == kNodeLabel && isneedhandle(parent)) {
+            if (parent->op == kNodeLabel && iscover(parent)) {
                 /* label dont push stack */
                 continue;
             }
@@ -330,7 +339,8 @@ static void completion(Inst *inst, InstGenData *data)
         if (vreg_isplaceholder(inst->u.vreg[i])) {
             assert(data->nodelist.size != 0);
 
-            InstGenData *childdata = nodelist_pop(&data->nodelist)->data;
+            Node *node = nodelist_pop(&data->nodelist);
+            InstGenData *childdata = node->data;
             inst->u.vreg[i] = childdata->vreg;
         }
     }
@@ -343,6 +353,7 @@ static void emit(ModuleFunc *func, Block *block, Node *node)
     assert(data->type == kInstDataRule);
 
     /* for debug */
+    /* printf("debug: "); */
     /* node_dprint(stdout, node); */
     /* fprintf(stdout, "\n"); */
 

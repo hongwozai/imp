@@ -59,7 +59,8 @@ static void linear(FILE *out, ModuleFunc *func)
 static void walk_func(FILE *out, ModuleFunc *func)
 {
     /* 函数准备操作 */
-    emit(out, "func:");
+    emit(out, ".global _main");
+    emit(out, "_main:");
     emit(out, "push %rbp");
     emit(out, "movq %rsp, %rbp");
 
