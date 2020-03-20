@@ -1,29 +1,68 @@
 #include "insts.h"
 
-Inst* inst_newv(Arena *arena, const char *desc,
-                VirtualReg operand1, VirtualReg operand2, VirtualReg dst)
+Inst* inst_new(Arena *arena, const char *desc,
+               InstReg *op1, InstReg *op2, InstReg *dst)
 {
     Inst *inst = arena_malloc(arena, sizeof(Inst));
     list_link_init(&inst->link);
     inst->desc = arena_dup(arena, desc, strlen(desc) + 1);
-    inst->isvirtual = true;
-    inst->u.vreg[kInstOperand1] = operand1;
-    inst->u.vreg[kInstOperand2] = operand2;
-    inst->u.vreg[kInstDst] = dst;
+    inst->reg[kInstOperand1] = *op1;
+    inst->reg[kInstOperand2] = *op2;
+    inst->reg[kInstDst] = *dst;
     return inst;
 }
 
-Inst* inst_new(Arena *arena, const char *desc,
-               TargetReg *op1, TargetReg *op2, TargetReg *dst)
+VirtualReg vreg_alloc(ModuleFunc *func)
 {
-    Inst *inst = arena_malloc(arena, sizeof(Inst));
-    list_link_init(&inst->link);
-    inst->desc = arena_dup(arena, desc, strlen(desc) + 1);
-    inst->isvirtual = false;
-    inst->u.reg[kInstOperand1] = op1;
-    inst->u.reg[kInstOperand2] = op2;
-    inst->u.reg[kInstDst] = dst;
-    return inst;
+    return func->vregindex ++;
+}
+
+InstReg *instreg_vset(InstReg *reg, VirtualReg vreg)
+{
+    reg->type = kInstRegVirtual;
+    reg->vreg = vreg;
+    reg->reg  = NULL;
+    return reg;
+}
+
+InstReg *instreg_talloc(InstReg *reg, TargetReg *treg)
+{
+    reg->type = kInstRegTarget;
+    reg->vreg = -1;
+    reg->reg  = treg;
+    return reg;
+}
+
+InstReg *instreg_unused(InstReg *reg)
+{
+    reg->type = kInstRegUnUsed;
+    return reg;
+}
+
+InstReg *instreg_dummy(InstReg *reg)
+{
+    reg->type = kInstRegDummy;
+    return reg;
+}
+
+bool instreg_isdummy(InstReg *reg)
+{
+    return reg->type == kInstRegDummy;
+}
+
+bool instreg_isvirtual(InstReg *reg)
+{
+    return reg->type == kInstRegVirtual;
+}
+
+bool instreg_isunused(InstReg *reg)
+{
+    return reg->type == kInstRegUnUsed;
+}
+
+bool instreg_istarget(InstReg *reg)
+{
+    return reg->type == kInstRegTarget;
 }
 
 /**
@@ -58,10 +97,19 @@ void inst_dprint(FILE *out, Inst *inst)
                 isswitch = false;
                 continue;
             }
-            if (inst->isvirtual) {
-                len += sprintf(buf + len, "v%d", inst->u.vreg[pos]);
-            } else {
-                len += sprintf(buf + len, "%s", inst->u.reg[pos]->rep);
+            switch (inst->reg[pos].type) {
+            case kInstRegVirtual:
+                len += sprintf(buf + len, "v%d", inst->reg[pos].vreg);
+                break;
+            case kInstRegTarget:
+                len += sprintf(buf + len, "%s", inst->reg[pos].reg->rep);
+                break;
+            case kInstRegUnUsed:
+                len += sprintf(buf + len, "[unused]");
+                break;
+            case kInstRegDummy:
+                len += sprintf(buf + len, "[dummy]");
+                break;
             }
             isswitch = false;
             continue;

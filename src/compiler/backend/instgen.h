@@ -2,7 +2,7 @@
 #define IMP_SRC_COMPILER_BACKEND_INSTGEN_H
 
 #include "insts.h"
-#include "compiler/analysis.h"
+#include "analysis.h"
 
 void instgen_run(Analy *analy, Module *module);
 

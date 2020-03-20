@@ -1,6 +1,6 @@
 #include <limits.h>
 
-#include "compiler/target.h"
+#include "target.h"
 #include "target_x64.h"
 
 static TargetReg x64regs[] = {

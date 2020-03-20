@@ -1,7 +1,7 @@
 #ifndef IMP_SRC_COMPILER_BACKEND_TARGET_X64_H
 #define IMP_SRC_COMPILER_BACKEND_TARGET_X64_H
 
-#include "compiler/target.h"
+#include "target.h"
 
 enum {
     RAX = 0,
@@ -24,7 +24,6 @@ enum {
     StackBasePointer = RBP,
     StackPointer = RSP,
 };
-
 
 extern Target target_x64;
 

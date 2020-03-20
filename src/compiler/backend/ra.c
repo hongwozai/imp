@@ -3,12 +3,12 @@
 #include "utils/bit.h"
 #include "target_x64.h"
 
-Target *target = &target_x64;
+static Target *target = &target_x64;
 
 /* 插入在inst指令之前 */
 static Inst* newinst(Block *block, Inst *inst, Arena *arena,
                      const char *desc,
-                     TargetReg *op1, TargetReg *op2, TargetReg *dst,
+                     InstReg *op1, InstReg *op2, InstReg *dst,
                      ...)
 {
     va_list ap;
@@ -35,7 +35,7 @@ static void newra(RA *ra, size_t regnum)
     for (size_t i = 0; i < regnum; i++) {
         /* vreg -> interval */
         Interval *interval = arena_malloc(&ra->arena, sizeof(Interval));
-        interval->vreg = i;
+        instreg_vset(&interval->reg, i);
         interval->start = 0;
         interval->end = 0;
         list_link_init(&interval->link);
@@ -45,7 +45,6 @@ static void newra(RA *ra, size_t regnum)
     }
     assert(ptrvec_count(&ra->intervalmap) == regnum);
 
-    ra->regused = 0;
     ra->regtotal = target->regnum;
     ra->regset = arena_malloc(&ra->arena, (ra->regtotal << 3) + 1);
     ra->stacksize = 0;
@@ -61,9 +60,55 @@ static void intervalprint(List *list)
     /* debug */
     list_foreach(pos, list->first) {
         Interval *interval = container_of(pos, Interval, link);
-        printf("reg: v%d, start: %ld end: %ld\n",
-               interval->vreg, interval->start, interval->end);
+
+        switch (interval->reg.type) {
+        case kInstRegUnUsed:
+        case kInstRegDummy:
+            assert(!"bug!");
+            break;
+        case kInstRegTarget:
+            printf("reg: %s", interval->reg.reg->rep);
+            break;
+        case kInstRegVirtual:
+            printf("reg: v%d", interval->reg.vreg);
+            break;
+        }
+        printf(" start: %ld end: %ld\n", interval->start, interval->end);
     }
+}
+
+static void handlereg(RA *ra, Inst *inst, InstReg *reg)
+{
+    if (instreg_isdummy(reg) ||
+        instreg_isunused(reg)) {
+        return;
+    }
+
+    /* 虚拟寄存器 */
+    if (instreg_isvirtual(reg)) {
+        /* 找到对应的interval */
+        Interval *interval = ptrvec_get(&ra->intervalmap,
+                                        reg->vreg);
+
+        assert(interval->reg.vreg == reg->vreg);
+        interval->end = ra->number;
+
+        if (interval->start == 0) {
+            interval->start = ra->number;
+            list_append(&ra->originlist, &interval->link);
+        }
+        return;
+    }
+
+#if 0
+    /* 真实的寄存器，需要预分配 */
+    Interval *interval = arena_malloc(&ra->arena, sizeof(Interval));
+    interval->reg = reg;
+    interval->start = ra->number;
+    interval->end = ra->number;
+
+    list_append(&ra->originlist, &interval->link);
+#endif
 }
 
 static void buildinterval(RA *ra, Block *block)
@@ -73,27 +118,8 @@ static void buildinterval(RA *ra, Block *block)
         Inst *inst = container_of(pos, Inst, link);
         ra->number ++;
 
-        if (!inst->isvirtual) {
-            continue;
-        }
-        for (int i = 0; i < 3; i++) {
-            assert(inst->u.vreg[i] != vreg_placeholder());
-            if (inst->u.vreg[i] == vreg_unused()) {
-                continue;
-            }
-
-            /* 找到对应的interval */
-            assert(ptrvec_count(&ra->intervalmap) != inst->u.vreg[i]);
-            Interval *interval = ptrvec_get(&ra->intervalmap,
-                                            inst->u.vreg[i]);
-
-            assert(interval->vreg == inst->u.vreg[i]);
-            interval->end = ra->number;
-
-            if (interval->start == 0) {
-                interval->start = ra->number;
-                list_append(&ra->originlist, &interval->link);
-            }
+        for (int i = 0; i < kInstMaxOp; i++) {
+            handlereg(ra, inst, &inst->reg[i]);
         }
     }
 
@@ -170,7 +196,6 @@ static void freearg(RA *ra, TargetReg *reg)
 {
     assert(reg);
     bit_clear(ra->regset, reg->id);
-    ra->regused --;
 }
 
 static void expire_active(RA *ra, size_t now)
@@ -192,6 +217,7 @@ static void scan(RA *ra)
 {
     list_foreach(pos, ra->originlist.first) {
         Interval *interval = container_of(pos, Interval, link);
+
         /* 排除过期的 */
         expire_active(ra, interval->start);
 
@@ -209,46 +235,44 @@ static void scan(RA *ra)
     }
 }
 
+static void completereg(RA *ra, ModuleFunc *func, Block *block,
+                            Inst *inst, InstReg *reg)
+{
+    /* 该虚拟寄存器对应的结果 */
+    Interval *interval = ptrvec_get(&ra->intervalmap, reg->vreg);
+
+    if (interval->result.type == kRAReg) {
+        instreg_talloc(reg, interval->result.reg);
+    } else {
+        assert(interval->result.type != kRAUnalloc);
+
+        /* spill代码，从内存中读取到临时寄存器 */
+        InstReg op1, op2, dst;
+        newinst(block, inst, &func->arena,
+                "mov %d(%%1), %%r",
+                instreg_talloc(&op1, &target->regs[StackBasePointer]),
+                instreg_unused(&op2),
+                instreg_talloc(&dst, &target->regs[FreeReg]),
+                -interval->result.stackpos);
+
+        instreg_talloc(reg, &target->regs[FreeReg]);
+    }
+}
+
 static void completion(RA *ra, ModuleFunc *func, Block *block)
 {
     list_safe_foreach(pos, iter, block->insts.first) {
         Inst *inst = container_of(pos, Inst, link);
-        if (!inst->isvirtual) { continue; }
-
-        TargetReg *regs[3] = { NULL, NULL, NULL };
 
         /* 对所有的虚拟寄存器循环进行处理 */
-        for (int i = 0; i < 3; i++) {
-            if (inst->u.vreg[i] == vreg_unused()) {
+        for (int i = 0; i < kInstMaxOp; i++) {
+            if (!instreg_isvirtual(&inst->reg[i])) {
                 continue;
             }
-            assert(inst->u.vreg[i] != vreg_placeholder());
-            assert(inst->u.vreg[i] < ptrvec_count(&ra->intervalmap));
-
-            /* 该虚拟寄存器对应的结果 */
-            Interval *interval = ptrvec_get(&ra->intervalmap,
-                                            (size_t)inst->u.vreg[i]);
-
-            if (interval->result.type == kRAReg) {
-                regs[i] = interval->result.reg;
-            } else {
-                assert(interval->result.type != kRAUnalloc);
-                /* spill代码，从内存中读取到临时寄存器 */
-                newinst(block, inst, &func->arena,
-                        "mov %d(%%1), %%r",
-                        &target->regs[StackBasePointer],
-                        NULL,
-                        &target->regs[FreeReg],
-                        -interval->result.stackpos);
-                regs[i] = &target->regs[FreeReg];
-            }
+            assert(inst->reg[i].vreg < ptrvec_count(&ra->intervalmap));
+            /* 针对每个虚拟寄存器 */
+            completereg(ra, func, block, inst, &inst->reg[i]);
         }
-
-        inst->isvirtual = false;
-        inst->u.reg[0] = regs[0];
-        inst->u.reg[1] = regs[1];
-        inst->u.reg[2] = regs[2];
-
         /* inst_dprint(stdout, inst); */
     }
 }

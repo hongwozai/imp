@@ -7,7 +7,7 @@
 
 #include "utils/arena.h"
 #include "utils/list.h"
-#include "compiler/nodes.h"
+#include "nodes.h"
 #include "insts.h"
 
 typedef struct NodeList {

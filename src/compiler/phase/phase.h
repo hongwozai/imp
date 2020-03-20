@@ -1,7 +1,7 @@
 #ifndef IMP_SRC_COMPILER_PHASE_PHASE_H
 #define IMP_SRC_COMPILER_PHASE_PHASE_H
 
-#include "compiler/analysis.h"
+#include "analysis.h"
 
 typedef struct Phase Phase;
 struct Phase {

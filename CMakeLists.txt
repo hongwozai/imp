@@ -17,6 +17,7 @@ list(FILTER DIR_RUNTIME_NOMAIN
   )
 
 include_directories(src)
+include_directories(src/compiler)
 add_definitions(-DUSE_TYPEOF)
 add_definitions(-Wall -g3)
 

@@ -7,9 +7,9 @@
 #include <stdbool.h>
 #include "utils/list.h"
 #include "utils/arena.h"
-#include "compiler/ptrvec.h"
-#include "compiler/target.h"
-#include "compiler/analysis.h"
+#include "ptrvec.h"
+#include "target.h"
+#include "analysis.h"
 
 typedef int VirtualReg;
 
@@ -17,20 +17,32 @@ enum InstRegPos {
     kInstOperand1 = 0,
     kInstOperand2,
     kInstDst,
+    /* 代表这最大数量 */
+    kInstMaxOp,
 };
+
+/* 此处封装虚拟与非虚拟 */
+typedef struct InstReg {
+    enum  {
+        /* 虚拟的 */
+        kInstRegVirtual,
+        /* 目标机器的 */
+        kInstRegTarget,
+        /* 该位置没有使用 */
+        kInstRegUnUsed,
+        /* 该位置占位符，等待之后填入 */
+        kInstRegDummy,
+    } type;
+    TargetReg  *reg;
+    VirtualReg  vreg;
+} InstReg;
 
 typedef struct Inst {
     ListLink link;
     /* 指令内容 */
     char *desc;
-    /* 使用的寄存器 */
-    bool isvirtual;
-    union {
-        /* operand1 [operand2] dst */
-        TargetReg *reg[3];
-        /* virtual reg: operand1 [operand2] dst */
-        VirtualReg vreg[3];
-    } u;
+    /* 指令使用的寄存器 */
+    InstReg reg[kInstMaxOp];
 } Inst;
 
 typedef struct Block {
@@ -38,13 +50,15 @@ typedef struct Block {
     char *name;
     /* 指令 */
     List insts;
-    /* 前驱后继 */
+    /* 前驱 */
     PtrVec preds;
+    /* 后继 */
     PtrVec succs;
     /* 该block对应的region */
     Node *region;
-    /* 遍历使用 */
+    /* 遍历使用: 索引号 */
     size_t id;
+    /* 遍历使用： 队列/栈 */
     ListLink link;
 } Block;
 
@@ -70,23 +84,19 @@ typedef struct Module {
     List funcs;
 } Module;
 
-Inst* inst_newv(Arena *arena, const char *desc,
-                VirtualReg operand1, VirtualReg operand2, VirtualReg dst);
+Inst*    inst_new(Arena *arena, const char *desc,
+                  InstReg *op1, InstReg *op2, InstReg *dst);
+void     inst_dprint(FILE *out, Inst *inst);
 
-Inst* inst_new(Arena *arena, const char *desc,
-               TargetReg *op1, TargetReg *op2, TargetReg *dst);
+VirtualReg vreg_alloc(ModuleFunc *func);
 
-void inst_dprint(FILE *out, Inst *inst);
-
-/* inline */
-static inline VirtualReg vreg_alloc(ModuleFunc *func) {
-    return func->vregindex++;
-}
-static inline VirtualReg vreg_unused() { return -1; }
-static inline VirtualReg vreg_placeholder() { return -2; }
-static inline bool vreg_isused(VirtualReg reg) {
-    return reg >= 0 || reg == vreg_placeholder();
-}
-static inline bool vreg_isplaceholder(VirtualReg r) { return r == -2; }
+InstReg *instreg_vset(InstReg *reg, VirtualReg vreg);
+InstReg *instreg_talloc(InstReg *reg, TargetReg *treg);
+InstReg *instreg_unused(InstReg *reg);
+InstReg *instreg_dummy(InstReg *reg);
+bool     instreg_isdummy(InstReg *reg);
+bool     instreg_isvirtual(InstReg *reg);
+bool     instreg_isunused(InstReg *reg);
+bool     instreg_istarget(InstReg *reg);
 
 #endif /* IMP_SRC_COMPILER_BACKEND_INSTS_H */

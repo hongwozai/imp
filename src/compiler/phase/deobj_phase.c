@@ -1,7 +1,7 @@
 #include <stdio.h>
-#include "compiler/nodes.h"
+#include "nodes.h"
 #include "deobj_phase.h"
-#include "compiler/mangle.h"
+#include "mangle.h"
 
 static void setmode(Phase *phase, Node *node)
 {

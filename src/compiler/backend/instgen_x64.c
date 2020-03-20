@@ -3,11 +3,12 @@
 #include "insts.h"
 #include "instgen.h"
 #include "instgen_internal.h"
-#include "compiler/nodes.h"
+#include "nodes.h"
+#include "target_x64.h"
 
 #define EMIT(arena, data, fmt, args...)                 \
     list_append(&data->insts,                           \
-                &newinst3v(arena, fmt, ##args)->link)
+                &newinst3(arena, fmt, ##args)->link)
 
 /**
  * (Load (Add reg imm))  -> mov $imm(vreg), vreg
@@ -37,9 +38,11 @@ static InstGenOp ops[] = {
 
 InstGenOp *instgenop_x64 = ops;
 
-static Inst *newinst3v(Arena *arena, const char *desc,
-                       VirtualReg op1, VirtualReg op2, VirtualReg dst,
-                       ...)
+static Target *target = &target_x64;
+
+static Inst *newinst3(Arena *arena, const char *desc,
+                      InstReg *op1, InstReg *op2, InstReg *dst,
+                      ...)
 {
     va_list ap;
     char buf[512];
@@ -48,7 +51,7 @@ static Inst *newinst3v(Arena *arena, const char *desc,
     vsnprintf(buf, 512, desc, ap);
     va_end(ap);
 
-    return inst_newv(arena, buf, op1, op2, dst);
+    return inst_new(arena, buf, op1, op2, dst);
 }
 
 static void nodelist_append(Arena *arena, List *list, Node *node)
@@ -72,8 +75,7 @@ static InstGenData* markrule(ModuleFunc *func, Node *node, bool isalloc)
     data->type = kInstDataRule;
     list_init(&data->insts);
     list_init(&data->nodelist);
-
-    data->vreg = isalloc ? vreg_alloc(func) : vreg_unused();
+    data->vreg = isalloc ? vreg_alloc(func) : -1;
 
     node->data = data;
     return data;
@@ -83,7 +85,7 @@ static void markused(ModuleFunc *func, Node *node)
 {
     InstGenData *data = arena_malloc(&func->arena, sizeof(InstGenData));
     data->type = kInstDataUsed;
-    data->vreg = vreg_unused();
+    data->vreg = -1;
     list_init(&data->insts);
     list_init(&data->nodelist);
 
@@ -116,6 +118,7 @@ static bool iscover(Node *node)
 
 static void genload(ModuleFunc *func, Node *node, Node **stack)
 {
+    InstReg op1, op2, dst;
     assert(ptrvec_count(&node->inputs) == 1);
 
     InstGenData *data = markrule(func, node, true);
@@ -140,7 +143,9 @@ static void genload(ModuleFunc *func, Node *node, Node **stack)
             Node *reg = (left->op == kNodeImm) ? right : left;
 
             EMIT(&func->arena, data, "mov %ld(%%1), %%r",
-                 vreg_placeholder(), vreg_unused(), data->vreg,
+                 instreg_dummy(&op1),
+                 instreg_unused(&op2),
+                 instreg_vset(&dst, data->vreg),
                  imm->attr.imm);
             nodelist_append(&func->arena, &data->nodelist, reg);
 
@@ -158,7 +163,9 @@ static void genload(ModuleFunc *func, Node *node, Node **stack)
 
     /* bingo! (Load reg) */
     EMIT(&func->arena, data, "mov (%%1), %%r",
-         vreg_placeholder(), vreg_unused(), data->vreg);
+         instreg_dummy(&op1),
+         instreg_unused(&op2),
+         instreg_vset(&dst, data->vreg));
 
     /* push */
     nodelist_append(&func->arena, &data->nodelist,  child);
@@ -176,37 +183,45 @@ static void genload(ModuleFunc *func, Node *node, Node **stack)
 static bool matchargs(ModuleFunc *func, Node *node, size_t iter,
                       InstGenData *data)
 {
-    const char *argreg = NULL;
+    InstReg op1, op2, dst;
+    TargetReg *argreg = NULL;
 
     switch (iter) {
-    case 1: argreg = "%%rdi"; break;
-    case 2: argreg = "%%rsi"; break;
-    case 3: argreg = "%%rdx"; break;
-    case 4: argreg = "%%rcx"; break;
-    case 5: argreg = "%%r8"; break;
-    case 6: argreg = "%%r9"; break;
+    case 1: argreg = &target->regs[RDI]; break;
+    case 2: argreg = &target->regs[RSI]; break;
+    case 3: argreg = &target->regs[RDX]; break;
+    case 4: argreg = &target->regs[RCX]; break;
+    case 5: argreg = &target->regs[R8]; break;
+    case 6: argreg = &target->regs[R9]; break;
     }
 
     if (iter <= 6) {
+        assert(argreg);
+
         switch (node->op) {
         case kNodeImm: {
-            EMIT(&func->arena, data, "mov $%ld, %s",
-                 vreg_unused(), vreg_unused(), vreg_unused(),
-                 node->attr.imm, argreg);
+            EMIT(&func->arena, data, "mov $%ld, %%r",
+                 instreg_unused(&op1),
+                 instreg_unused(&op2),
+                 instreg_talloc(&dst, argreg),
+                 node->attr.imm);
             markused(func, node);
             return false;
         }
         case kNodeLabel: {
-            EMIT(&func->arena, data, "lea (%s), %s",
-                 vreg_unused(), vreg_unused(), vreg_unused(),
-                 node->attr.label.name, argreg);
+            EMIT(&func->arena, data, "lea (%s), %%r",
+                 instreg_unused(&op1),
+                 instreg_unused(&op2),
+                 instreg_talloc(&dst, argreg),
+                 node->attr.label.name);
             markused(func, node);
             return false;
         }
         default: {
-            EMIT(&func->arena, data, "mov %%1, %s",
-                 vreg_placeholder(), vreg_unused(), vreg_unused(),
-                 argreg);
+            EMIT(&func->arena, data, "mov %%1, %%r",
+                 instreg_dummy(&op1),
+                 instreg_unused(&op2),
+                 instreg_talloc(&dst, argreg));
 
             nodelist_append(&func->arena, &data->nodelist,  node);
             return true;
@@ -216,21 +231,21 @@ static bool matchargs(ModuleFunc *func, Node *node, size_t iter,
 
     if (node->op == kNodeImm) {
         EMIT(&func->arena, data, "push %ld",
-             vreg_unused(), vreg_unused(), vreg_unused(),
+             instreg_unused(&op1), instreg_unused(&op2), instreg_unused(&dst),
              node->attr.imm);
         return false;
     }
 
     EMIT(&func->arena, data, "push %%1",
-         vreg_placeholder(), vreg_unused(), vreg_unused(),
-         argreg);
+         instreg_dummy(&op1), instreg_unused(&op2), instreg_unused(&dst));
 
-    nodelist_append(&func->arena, &data->nodelist,  node);
+    nodelist_append(&func->arena, &data->nodelist, node);
     return true;
 }
 
 static void gencall(ModuleFunc *func, Node *node, Node **stack)
 {
+    InstReg op1, op2, dst;
     Node *funcnode = NULL;
     InstGenData *data = markrule(func, node, node->uses.size != 0);
 
@@ -263,14 +278,18 @@ static void gencall(ModuleFunc *func, Node *node, Node **stack)
         /* (Call (Label) ...) */
         EMIT(&func->arena, data,
              "call (%s)",
-             vreg_unused(), vreg_unused(), vreg_unused(),
+             instreg_unused(&op1),
+             instreg_unused(&op2),
+             instreg_unused(&dst),
              funcnode->attr.label.name);
         markused(func, funcnode);
     } else {
         /* (Call vreg ...) */
         EMIT(&func->arena, data,
              "call *%%1",
-             vreg_placeholder(), vreg_unused(), vreg_unused());
+             instreg_dummy(&op1),
+             instreg_unused(&op2),
+             instreg_unused(&dst));
 
         nodelist_append(&func->arena, &data->nodelist,  funcnode);
     }
@@ -278,17 +297,19 @@ static void gencall(ModuleFunc *func, Node *node, Node **stack)
     /* 当该调用无人使用时，不申请结果寄存器 */
     if (node->uses.size != 0) {
         EMIT(&func->arena, data,
-             "mov %s, %%r",
-             vreg_unused(), vreg_unused(), data->vreg,
-             "%%rax");
+             "mov %%1, %%r",
+             instreg_talloc(&op1, &target->regs[RAX]),
+             instreg_unused(&op2),
+             instreg_vset(&dst, data->vreg));
     }
 }
 
 static void genadd(ModuleFunc *func, Node *node, Node **stack)
 {
-    assert(ptrvec_count(&node->inputs) == 2);
+    InstReg op1, op2, dst;
 
     /* child */
+    assert(ptrvec_count(&node->inputs) == 2);
     Node *left = ptrvec_get(&node->inputs, 0);
     Node *right = ptrvec_get(&node->inputs, 1);
 
@@ -297,7 +318,9 @@ static void genadd(ModuleFunc *func, Node *node, Node **stack)
 
     /* emit */
     EMIT(&func->arena, data, "lea (%%1, %%2, 1), %%r",
-         vreg_placeholder(), vreg_placeholder(), data->vreg);
+         instreg_dummy(&op1),
+         instreg_dummy(&op2),
+         instreg_vset(&dst, data->vreg));
     nodelist_append(&func->arena, &data->nodelist,  left);
     nodelist_append(&func->arena, &data->nodelist,  right);
 
@@ -314,34 +337,43 @@ static void genadd(ModuleFunc *func, Node *node, Node **stack)
 
 static void genlabel(ModuleFunc *func, Node *node, Node **stack)
 {
+    InstReg op1, op2, dst;
     InstGenData *data = markrule(func, node, true);
 
     EMIT(&func->arena, data,
          "lea (%s), %%r",
-         vreg_unused(), vreg_unused(), data->vreg,
+         instreg_unused(&op1),
+         instreg_unused(&op2),
+         instreg_vset(&dst, data->vreg),
          node->attr.label.name);
 }
 
 static void genimm(ModuleFunc *func, Node *node, Node **stack)
 {
+    InstReg op1, op2, dst;
     InstGenData *data = markrule(func, node, true);
 
     EMIT(&func->arena, data,
          "mov $%ld, %%r",
-         vreg_unused(), vreg_unused(), data->vreg,
+         instreg_unused(&op1),
+         instreg_unused(&op2),
+         instreg_vset(&dst, data->vreg),
          node->attr.imm);
 }
 
 static void completion(Inst *inst, InstGenData *data)
 {
     /* 通过记录的指令数据进行补全（之前没有填写的寄存器） */
-    for (int i = 0; i < 3; i++) {
-        if (vreg_isplaceholder(inst->u.vreg[i])) {
+    for (int i = 0; i < kInstMaxOp; i++) {
+        if (instreg_isdummy(&inst->reg[i])) {
+            Node *node;
+            InstGenData *childdata;
+
             assert(data->nodelist.size != 0);
 
-            Node *node = nodelist_pop(&data->nodelist);
-            InstGenData *childdata = node->data;
-            inst->u.vreg[i] = childdata->vreg;
+            node = nodelist_pop(&data->nodelist);
+            childdata = node->data;
+            instreg_vset(&inst->reg[i], childdata->vreg);
         }
     }
 
