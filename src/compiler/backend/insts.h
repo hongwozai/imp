@@ -72,7 +72,7 @@ typedef struct ModuleFunc {
     /* 总共使用了多少寄存器（可能有空洞） */
     size_t vregindex;
     /* 栈深度，寄存器分配之后填入 */
-    size_t stacksize;
+    int stacksize;
     /* 该函数使用了哪些调用者保存的寄存器 */
     uint8_t *calleeset;
 } ModuleFunc;

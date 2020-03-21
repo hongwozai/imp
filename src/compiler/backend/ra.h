@@ -40,7 +40,6 @@ typedef struct RA {
     size_t number;
     /* 用虚拟寄存器的编号映射区间，以及分配的结果 */
     PtrVec intervalmap;
-    /* call指令id的列表，用于判断interval有无调用行为 */
     /* 所有的区间，按开始顺序 */
     List originlist;
     /* 当前活跃的区间 */

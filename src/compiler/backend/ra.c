@@ -45,7 +45,7 @@ static void newra(RA *ra, size_t regnum)
         instreg_vset(&interval->reg, i);
         interval->start = 0;
         interval->end = 0;
-        interval->throughcall = true;
+        interval->throughcall = false;
         list_link_init(&interval->link);
         list_link_init(&interval->activelink);
         interval->result.type = kRAUnalloc;
@@ -93,8 +93,7 @@ static void handlereg(RA *ra, Inst *inst, InstReg *reg)
     /* 虚拟寄存器 */
     if (instreg_isvirtual(reg)) {
         /* 找到对应的interval */
-        Interval *interval = ptrvec_get(&ra->intervalmap,
-                                        reg->vreg);
+        Interval *interval = ptrvec_get(&ra->intervalmap, reg->vreg);
 
         assert(interval->reg.vreg == reg->vreg);
         interval->end = ra->number;
@@ -175,7 +174,11 @@ static int allocstack(RA *ra)
 /* 分配寄存器 */
 static TargetReg* allocarg(RA *ra, ModuleFunc *func, Interval *interval)
 {
-    int type[] = { kCallerSave, kCalleeSave, -1 };
+    /**
+     * TODO: 这里未实现调用者保存逻辑和是否有call调用在中间
+     * 所以这里先不使用
+     */
+    int type[] = { kCalleeSave, /* kCallerSave, */ -1 };
 
     if (interval->throughcall) {
         type[0] = kCalleeSave;
@@ -184,7 +187,7 @@ static TargetReg* allocarg(RA *ra, ModuleFunc *func, Interval *interval)
 
     for (int t = 0; type[t] >= 0; t++) {
         for (int i = 0; i < ra->regtotal; i++) {
-            /* 这里只使用kCalleeSave kCallerSave的寄存器 */
+            /* 先处理这个分类的 */
             if (target->regs[i].type != type[t]) {
                 continue;
             }
