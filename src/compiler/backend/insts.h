@@ -41,6 +41,8 @@ typedef struct Inst {
     ListLink link;
     /* 指令内容 */
     char *desc;
+    /* 对指令内容的标注 */
+    bool iscall;
     /* 指令使用的寄存器 */
     InstReg reg[kInstMaxOp];
 } Inst;
@@ -69,6 +71,10 @@ typedef struct ModuleFunc {
     Block *start;
     /* 总共使用了多少寄存器（可能有空洞） */
     size_t vregindex;
+    /* 栈深度，寄存器分配之后填入 */
+    size_t stacksize;
+    /* 该函数使用了哪些调用者保存的寄存器 */
+    uint8_t *calleeset;
 } ModuleFunc;
 
 typedef struct ModuleLabel {

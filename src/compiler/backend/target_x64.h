@@ -20,9 +20,6 @@ enum {
     R13,
     R14,
     R15,
-    FreeReg = RAX,
-    StackBasePointer = RBP,
-    StackPointer = RSP,
 };
 
 extern Target target_x64;

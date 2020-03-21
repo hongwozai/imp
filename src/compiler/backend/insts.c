@@ -6,6 +6,7 @@ Inst* inst_new(Arena *arena, const char *desc,
     Inst *inst = arena_malloc(arena, sizeof(Inst));
     list_link_init(&inst->link);
     inst->desc = arena_dup(arena, desc, strlen(desc) + 1);
+    inst->iscall = false;
     inst->reg[kInstOperand1] = *op1;
     inst->reg[kInstOperand2] = *op2;
     inst->reg[kInstDst] = *dst;

@@ -5,7 +5,7 @@
 
 Object *_0x2D(Object *obj1, Object *obj2)
 {
-    printf("+++++++++++\n");
+    printf("+++++++++++ %lf\n", 1.0);
     return obj1;
 }
 

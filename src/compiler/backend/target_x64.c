@@ -92,4 +92,5 @@ Target target_x64 = {
     .regs = x64regs,
     .imm_min = INT_MIN,
     .imm_max = INT_MAX,
+    .stackalign = 16,
 };

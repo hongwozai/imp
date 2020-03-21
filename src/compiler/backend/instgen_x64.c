@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdarg.h>
+#include "utils/bit.h"
 #include "insts.h"
 #include "instgen.h"
 #include "instgen_internal.h"
@@ -142,7 +143,8 @@ static void genload(ModuleFunc *func, Node *node, Node **stack)
             Node *imm = (left->op == kNodeImm) ? left : right;
             Node *reg = (left->op == kNodeImm) ? right : left;
 
-            EMIT(&func->arena, data, "mov %ld(%%1), %%r",
+            EMIT(&func->arena, data,
+                 "mov %ld(%%1), %%r",
                  instreg_dummy(&op1),
                  instreg_unused(&op2),
                  instreg_vset(&dst, data->vreg),
@@ -276,8 +278,7 @@ static void gencall(ModuleFunc *func, Node *node, Node **stack)
 
     if (funcnode->op == kNodeLabel) {
         /* (Call (Label) ...) */
-        EMIT(&func->arena, data,
-             "call (%s)",
+        EMIT(&func->arena, data, "call (%s)",
              instreg_unused(&op1),
              instreg_unused(&op2),
              instreg_unused(&dst),
@@ -285,14 +286,17 @@ static void gencall(ModuleFunc *func, Node *node, Node **stack)
         markused(func, funcnode);
     } else {
         /* (Call vreg ...) */
-        EMIT(&func->arena, data,
-             "call *%%1",
+        EMIT(&func->arena, data, "call *%%1",
              instreg_dummy(&op1),
              instreg_unused(&op2),
              instreg_unused(&dst));
 
         nodelist_append(&func->arena, &data->nodelist,  funcnode);
     }
+
+    /* 构造冲突集合，call指令与callersave寄存器冲突 */
+    Inst *inst = container_of(data->insts.last, Inst, link);
+    inst->iscall = true;
 
     /* 当该调用无人使用时，不申请结果寄存器 */
     if (node->uses.size != 0) {

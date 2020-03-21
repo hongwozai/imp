@@ -20,6 +20,8 @@ typedef struct RAResult {
 typedef struct Interval {
     /* 代表的指令(virtual, target两种) */
     InstReg reg;
+    /* 是否跨过了调用指令，跨过调用指令不能够分配callersave寄存器 */
+    bool throughcall;
     /* 区间的开始与结束 */
     size_t start;
     size_t end;
@@ -38,6 +40,7 @@ typedef struct RA {
     size_t number;
     /* 用虚拟寄存器的编号映射区间，以及分配的结果 */
     PtrVec intervalmap;
+    /* call指令id的列表，用于判断interval有无调用行为 */
     /* 所有的区间，按开始顺序 */
     List originlist;
     /* 当前活跃的区间 */

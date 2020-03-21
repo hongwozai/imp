@@ -54,6 +54,8 @@ static ModuleFunc* newfunc(Module *module)
     ptrvec_init(&func->arena, &func->blocks, 1);
     func->start = NULL;
     func->vregindex = 0;
+    func->stacksize = 0;
+    func->calleeset = NULL;
 
     list_append(&module->funcs, &func->link);
     return func;

@@ -33,6 +33,9 @@ typedef struct Target {
     /* 立即数的范围 */
     intptr_t imm_min;
     intptr_t imm_max;
+
+    /* 栈字节对齐数 */
+    size_t stackalign;
 } Target;
 
 #endif /* IMP_SRC_COMPILER_TARGET_H */

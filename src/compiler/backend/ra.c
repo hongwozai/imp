@@ -3,10 +3,13 @@
 #include "utils/bit.h"
 #include "target_x64.h"
 
+#define ROUNDUP(x, n) (((x) + ((n) - 1)) & (~((n) - 1)))
+
 static Target *target = &target_x64;
 
 /* 插入在inst指令之前 */
-static Inst* newinst(Block *block, Inst *inst, Arena *arena,
+static Inst* newinst(Block *block, Inst *inst, bool isbefore,
+                     Arena *arena,
                      const char *desc,
                      InstReg *op1, InstReg *op2, InstReg *dst,
                      ...)
@@ -19,7 +22,11 @@ static Inst* newinst(Block *block, Inst *inst, Arena *arena,
     va_end(ap);
 
     Inst *x = inst_new(arena, buf, op1, op2, dst);
-    list_add(&block->insts, inst->link.prev, &x->link);
+    if (isbefore) {
+        list_add(&block->insts, inst->link.prev, &x->link);
+    } else {
+        list_add(&block->insts, &inst->link, &x->link);
+    }
     return x;
 }
 
@@ -38,6 +45,7 @@ static void newra(RA *ra, size_t regnum)
         instreg_vset(&interval->reg, i);
         interval->start = 0;
         interval->end = 0;
+        interval->throughcall = true;
         list_link_init(&interval->link);
         list_link_init(&interval->activelink);
         interval->result.type = kRAUnalloc;
@@ -46,8 +54,10 @@ static void newra(RA *ra, size_t regnum)
     assert(ptrvec_count(&ra->intervalmap) == regnum);
 
     ra->regtotal = target->regnum;
-    ra->regset = arena_malloc(&ra->arena, (ra->regtotal << 3) + 1);
-    ra->stacksize = 0;
+    ra->regset = bit_new(&ra->arena, ra->regtotal);
+
+    /* 这里实现要把栈基址寄存器的空间留出来(因为栈向下生长的) */
+    ra->stacksize = target->regsize;
 }
 
 static void freera(RA *ra)
@@ -77,13 +87,9 @@ static void intervalprint(List *list)
     }
 }
 
+static void addinterval(RA *ra, TargetReg *reg);
 static void handlereg(RA *ra, Inst *inst, InstReg *reg)
 {
-    if (instreg_isdummy(reg) ||
-        instreg_isunused(reg)) {
-        return;
-    }
-
     /* 虚拟寄存器 */
     if (instreg_isvirtual(reg)) {
         /* 找到对应的interval */
@@ -99,29 +105,25 @@ static void handlereg(RA *ra, Inst *inst, InstReg *reg)
         }
         return;
     }
-
-#if 0
-    /* 真实的寄存器，需要预分配 */
-    Interval *interval = arena_malloc(&ra->arena, sizeof(Interval));
-    interval->reg = reg;
-    interval->start = ra->number;
-    interval->end = ra->number;
-
-    list_append(&ra->originlist, &interval->link);
-#endif
 }
 
-static void buildinterval(RA *ra, Block *block)
-{
+static void buildinterval(RA *ra, Block *block) {
     /* 遍历每一条指令，对每一条指令的虚拟寄存器进行分析 */
     list_foreach(pos, block->insts.first) {
         Inst *inst = container_of(pos, Inst, link);
         ra->number ++;
 
         for (int i = 0; i < kInstMaxOp; i++) {
+            if (instreg_isdummy(&inst->reg[i]) ||
+                instreg_isunused(&inst->reg[i])) {
+                continue;
+            }
+
             handlereg(ra, inst, &inst->reg[i]);
         }
     }
+
+    /* 判断interval中是否有call */
 
     /* debug */
     /* intervalprint(&ra->originlist); */
@@ -134,7 +136,7 @@ static void linear(RA *ra, ModuleFunc *func)
 {
     /* 位图 */
     size_t blocknum = ptrvec_count(&func->blocks);
-    uint8_t *bitset = arena_malloc(&ra->arena, (blocknum << 3) + 1);
+    uint8_t *bitset = bit_new(&ra->arena, blocknum);
 
     List stack;
     list_init(&stack);
@@ -171,19 +173,32 @@ static int allocstack(RA *ra)
 }
 
 /* 分配寄存器 */
-static TargetReg* allocarg(RA *ra)
+static TargetReg* allocarg(RA *ra, ModuleFunc *func, Interval *interval)
 {
-    int type[2] = { kCalleeSave, kCallerSave };
+    int type[] = { kCallerSave, kCalleeSave, -1 };
 
-    for (int t = 0; t < 2; t++) {
+    if (interval->throughcall) {
+        type[0] = kCalleeSave;
+        type[1] = -1;
+    }
+
+    for (int t = 0; type[t] >= 0; t++) {
         for (int i = 0; i < ra->regtotal; i++) {
             /* 这里只使用kCalleeSave kCallerSave的寄存器 */
             if (target->regs[i].type != type[t]) {
                 continue;
             }
+
             /* 已经使用 */
             if (bit_check(ra->regset, i)) {
                 continue;
+            }
+
+            if (target->regs[i].type == kCalleeSave) {
+                if (!func->calleeset) {
+                    func->calleeset = bit_new(&func->arena, target->regnum);
+                }
+                bit_set(func->calleeset, i);
             }
             bit_set(ra->regset, i);
             return &target->regs[i];
@@ -213,7 +228,7 @@ static void expire_active(RA *ra, size_t now)
     }
 }
 
-static void scan(RA *ra)
+static void scan(RA *ra, ModuleFunc *func)
 {
     list_foreach(pos, ra->originlist.first) {
         Interval *interval = container_of(pos, Interval, link);
@@ -221,7 +236,7 @@ static void scan(RA *ra)
         /* 排除过期的 */
         expire_active(ra, interval->start);
 
-        TargetReg *reg = allocarg(ra);
+        TargetReg *reg = allocarg(ra, func, interval);
         if (reg) {
             /* 还有空余寄存器，那么分配寄存器 */
             interval->result.type = kRAReg;
@@ -236,7 +251,7 @@ static void scan(RA *ra)
 }
 
 static void completereg(RA *ra, ModuleFunc *func, Block *block,
-                            Inst *inst, InstReg *reg)
+                        Inst *inst, int pos, InstReg *reg)
 {
     /* 该虚拟寄存器对应的结果 */
     Interval *interval = ptrvec_get(&ra->intervalmap, reg->vreg);
@@ -246,16 +261,33 @@ static void completereg(RA *ra, ModuleFunc *func, Block *block,
     } else {
         assert(interval->result.type != kRAUnalloc);
 
-        /* spill代码，从内存中读取到临时寄存器 */
-        InstReg op1, op2, dst;
-        newinst(block, inst, &func->arena,
-                "mov %d(%%1), %%r",
-                instreg_talloc(&op1, &target->regs[StackBasePointer]),
-                instreg_unused(&op2),
-                instreg_talloc(&dst, &target->regs[FreeReg]),
-                -interval->result.stackpos);
+        if (pos == kInstOperand1 || pos == kInstOperand2) {
+            /* spill代码，从内存中读取到临时寄存器 */
+            InstReg op1, op2, dst;
+            newinst(block, inst, true, &func->arena,
+                    interval->result.stackpos == 0
+                    ? "mov (%%1), %%r"
+                    : "mov %d(%%1), %%r",
+                    instreg_talloc(&op1, &target->regs[RBP]),
+                    instreg_unused(&op2),
+                    instreg_talloc(&dst, &target->regs[RAX]),
+                    -interval->result.stackpos);
 
-        instreg_talloc(reg, &target->regs[FreeReg]);
+            instreg_talloc(reg, &target->regs[RAX]);
+        } else {
+            /* 从寄存器中存储到内存 */
+            InstReg op1, op2, dst;
+            newinst(block, inst, false, &func->arena,
+                    interval->result.stackpos == 0
+                    ? "mov %%1, (%%r)"
+                    : "mov %%1, %d(%%r)",
+                    instreg_talloc(&op1, &target->regs[RAX]),
+                    instreg_unused(&op2),
+                    instreg_talloc(&dst, &target->regs[RBP]),
+                    -interval->result.stackpos);
+
+            instreg_talloc(reg, &target->regs[RAX]);
+        }
     }
 }
 
@@ -271,7 +303,7 @@ static void completion(RA *ra, ModuleFunc *func, Block *block)
             }
             assert(inst->reg[i].vreg < ptrvec_count(&ra->intervalmap));
             /* 针对每个虚拟寄存器 */
-            completereg(ra, func, block, inst, &inst->reg[i]);
+            completereg(ra, func, block, inst, i, &inst->reg[i]);
         }
         /* inst_dprint(stdout, inst); */
     }
@@ -286,7 +318,7 @@ static void walk_func(ModuleFunc *func)
     linear(&ra, func);
 
     /* 2. 遍历interval，并进行分配 */
-    scan(&ra);
+    scan(&ra, func);
 
     /* 3. 填回insts */
     ptrvec_foreach(iter, &func->blocks) {
@@ -294,6 +326,8 @@ static void walk_func(ModuleFunc *func)
         completion(&ra, func, block);
     }
 
+    /* 这里让栈按要求的尺寸字节对齐 */
+    func->stacksize = ROUNDUP(ra.stacksize, target->stackalign);
     freera(&ra);
 }
 

@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include "utils/bit.h"
 #include "genasm.h"
+#include "target_x64.h"
+
+static Target *target = &target_x64;
 
 static void emit(FILE *out, const char *fmt, ...)
 {
@@ -56,16 +59,57 @@ static void linear(FILE *out, ModuleFunc *func)
     free(bitset);
 }
 
+static bool savecallee(FILE *out, ModuleFunc *func)
+{
+    int num = 0;
+    for (int i = 0; i < target->regnum; i++) {
+        if (bit_check(func->calleeset, i) &&
+            target->regs[i].type == kCalleeSave) {
+            emit(out, "pushq %s", target->regs[i].rep);
+            num++;
+        }
+    }
+    if ((num & 1) == 1) {
+        emit(out, "pushq $0");
+        return true;
+    }
+    return false;
+}
+
+static void loadcallee(FILE *out, ModuleFunc *func, bool isalign)
+{
+    if (isalign) {
+        emit(out, "addq $8, %rsp");
+    }
+    for (int i = target->regnum; i > 0; i--) {
+        if (bit_check(func->calleeset, i) &&
+            target->regs[i].type == kCalleeSave) {
+            emit(out, "popq %s", target->regs[i].rep);
+        }
+    }
+}
+
 static void walk_func(FILE *out, ModuleFunc *func)
 {
+    bool isalign = false;
+
     /* 函数准备操作 */
     emit(out, ".global _main");
     emit(out, "_main:");
     emit(out, "push %rbp");
     emit(out, "movq %rsp, %rbp");
 
+    /* 被调用者保存寄存器 */
+    isalign = savecallee(out, func);
+
+    /* 扩展栈大小 */
+    emit(out, "subq $0x%02X, %rsp", func->stacksize);
+
     /* 遍历block，打印指令 */
     linear(out, func);
+
+    /* 恢复被调用者保存的寄存器 */
+    loadcallee(out, func, isalign);
 
     /* 函数结束操作 */
     emit(out, "leaveq");
