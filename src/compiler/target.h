@@ -18,7 +18,7 @@ typedef struct TargetReg {
         /* 栈指针 */
         kStackPointer,
         /* 栈基址指针 */
-        kStackBasePointer,
+        kFramePointer,
     } type;
 } TargetReg;
 

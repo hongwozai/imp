@@ -13,7 +13,7 @@ aux_source_directory(src/compiler/backend DIR_COMPILER_BACKEND)
 set(DIR_RUNTIME_NOMAIN ${DIR_RUNTIME})
 
 list(FILTER DIR_RUNTIME_NOMAIN
-  EXCLUDE REGEX runtime\.c
+  EXCLUDE REGEX main\.c
   )
 
 include_directories(src)
@@ -21,7 +21,6 @@ include_directories(src/compiler)
 add_definitions(-DUSE_TYPEOF)
 add_definitions(-Wall -g3)
 
-message("message : ${DIR_SRC}")
 add_library(${PROJECT_NAME}_runtime STATIC ${DIR_RUNTIME} ${DIR_UTILS})
 
 add_executable(${PROJECT_NAME}_compiler

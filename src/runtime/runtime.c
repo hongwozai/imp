@@ -1,24 +1,40 @@
 #include <stdio.h>
+#include <stdarg.h>
+
 #include "object.h"
 #include "gc.h"
 #include "global.h"
 
-Object *_0x2D(Object *obj1, Object *obj2)
+/**
+ * 构造list
+ */
+Object *_runtime_list(Object *first, ...)
 {
-    printf("+++++++++++ %lf\n", 1.0);
-    return obj1;
-}
+    va_list ap;
+    Object *list = imp_nil;
 
-Object *_0x2B(Object *obj1, Object *obj2)
-{
-    printf("------------\n");
-    return obj1;
-}
+    if (!first) { return list; }
 
-Object *_print0x2Dobject(Object *obj)
-{
-    print_object(stdout, obj);
-    return imp_nil;
+    va_start(ap, first);
+    Object *temp = first;
+    Object *last = imp_nil;
+    do {
+        Object *cons = gc_new(&impgc, kCons, sizeof(ConsObject));
+        getcar(cons) = temp;
+        getcdr(cons) = imp_nil;
+
+        if (last != imp_nil) {
+            getcdr(last) = cons;
+        }
+        if (list == imp_nil) {
+            list = cons;
+        }
+        last = cons;
+        temp = va_arg(ap, Object*);
+    } while (temp);
+
+    va_end(ap);
+    return list;
 }
 
 /**
@@ -34,18 +50,4 @@ Object *_runtime_newv(enum ObjectType type, union Value value)
 Object *_runtime_newstr(const char *str, size_t size)
 {
     return gc_create_string(&impgc, str, size);
-}
-
-/**
- * main函数入口
- */
-extern intptr_t _main();
-
-int main(int argc, char *argv[])
-{
-    intptr_t ret = 0;
-    global_init();
-    ret = _main();
-    global_destroy();
-    return ret;
 }

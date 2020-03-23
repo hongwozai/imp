@@ -16,6 +16,7 @@ int main(int argc, char *argv[])
 {
     Reader reader;
     global_init();
+
     if (!reader_open(&reader, argv[1])) {
         return -1;
     }

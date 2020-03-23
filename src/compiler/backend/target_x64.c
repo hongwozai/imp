@@ -37,7 +37,7 @@ static TargetReg x64regs[] = {
     [RBP] = {
         .id = RBP,
         .rep = "%rbp",
-        .type = kStackBasePointer,
+        .type = kFramePointer,
     },
     [RSP] = {
         .id = RSP,
