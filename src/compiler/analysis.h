@@ -20,8 +20,8 @@ typedef struct AnalyArg {
 
 typedef struct AnalyProtoType {
     size_t argnum;
-    AnalyArg *args;
     AnalyArg retval;
+    AnalyArg *args;
 } AnalyProtoType;
 
 typedef struct AnalyEnv {

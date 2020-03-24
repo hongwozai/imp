@@ -10,7 +10,8 @@ static Node* visit_atom(Analy *analy, Object *obj);
 static Node* visit_define(Analy *analy, Object *obj);
 static Node* visit_define_var(Analy *analy, Object *obj);
 static Node* visit_define_lambda(Analy *analy, Object *obj);
-static Node* visit_lambda(Analy *analy, Object *args, Object *body);
+static Node* visit_lambda(Analy *analy, Object *args, Object *body,
+                          AnalyFunc **func);
 
 static AnalyEnv* newenv(AnalyFunction *func)
 {
@@ -105,7 +106,12 @@ static Node *visit(Analy *analy, Object *obj)
         if (equal_object(getcar(obj), imp_define)) {
             return visit_define(analy, getcdr(obj));
         } else if (equal_object(getcar(obj), imp_lambda)) {
-            /* return visit_lambda(analy, getcdr(obj)); */
+            Object *rest = getcdr(obj);
+
+            assert(gettype(rest) == kCons);
+            assert(getcar(rest) == kCons ||
+                   getcar(rest) == kNil);
+            return visit_lambda(analy, getcar(rest), getcdr(rest));
         }
     }
 
@@ -170,13 +176,6 @@ static Node* visit_define_var(Analy *analy, Object *obj)
         ? imp_nil
         : getcar(getcdr(obj));
 
-    /* for debug */
-    printf("\nsym: ");
-    print_object(stdout, sym);
-    printf("\nvalue: ");
-    print_object(stdout, value);
-    printf("\n");
-
     /* 访问value */
     Node *node = visit(analy, value);
 
@@ -189,11 +188,28 @@ static Node* visit_define_var(Analy *analy, Object *obj)
 
 static Node* visit_define_lambda(Analy *analy, Object *obj)
 {
-    return NULL;
+    /* name and args */
+    Object *na = getcar(obj);
+    Object *body = getcdr(obj);
+
+    /* 获得funcname */
+
+    /* 这里构造funcobj */
+    AnalyFunc *func;
+    Node *funcnode = visit_lambda(analy, getcdr(na), body,
+                                  &func);
+
+    /* func->name = sym_getname(getcar(na)); */
+    return func;
 }
 
-static Node* visit_lambda(Analy *analy, Object *args, Object *body)
+static Node* visit_lambda(Analy *analy, Object *args, Object *body,
+                          AnalyFunc **func)
 {
+    /* name = get_funcname */
+    /* newfunc */
+    /* node_new(kNodeLabel) */
+    /* node_new(func, gcnewv) */
     return NULL;
 }
 

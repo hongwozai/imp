@@ -9,7 +9,7 @@ libfile=${BIN}/libimp_runtime.a
 
 echo "filename: ${filename} objfile: ${objfile} binfile: ${binfile}"
 
-${BIN}/imp_compiler $filename 2>&1 1>/dev/null | as -o $objfile
+${BIN}/imp_compiler $filename 2>&1 1>/dev/null | tee ${binfile}.S | as -o $objfile
 
 if [ $? -ne 0 ] || [ ! -f "${objfile}" ]; then
     echo "Compile Failed"
