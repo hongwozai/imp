@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     analysis_init(&analy);
     while (true) {
         obj = reader_read(&reader);
-        /* print_object(stdout, obj); */
+        print_object(stdout, obj);
         if (gettype(obj) == kEof) {
             break;
         }
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
     analysis_destroy(&analy);
 
     ra_run(&module);
-    genasm_run(stdout, &module);
+    genasm_run(stderr, &module);
 
     reader_close(&reader);
     global_destroy();

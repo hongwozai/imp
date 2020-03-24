@@ -1,11 +1,16 @@
 #include "nodes.h"
 #include "analysis.h"
 #include "runtime/panic.h"
+#include "runtime/global.h"
 
 static Node* visit(Analy *analy, Object *obj);
 static Node* visit_symbol(Analy *analy, Object *obj);
 static Node* visit_call(Analy *analy, Object *obj);
 static Node* visit_atom(Analy *analy, Object *obj);
+static Node* visit_define(Analy *analy, Object *obj);
+static Node* visit_define_var(Analy *analy, Object *obj);
+static Node* visit_define_lambda(Analy *analy, Object *obj);
+static Node* visit_lambda(Analy *analy, Object *args, Object *body);
 
 static AnalyEnv* newenv(AnalyFunction *func)
 {
@@ -95,6 +100,15 @@ static Node *visit(Analy *analy, Object *obj)
         return visit_atom(analy, obj);
     }
 
+    /* special */
+    if (gettype(getcar(obj)) == kSymbol) {
+        if (equal_object(getcar(obj), imp_define)) {
+            return visit_define(analy, getcdr(obj));
+        } else if (equal_object(getcar(obj), imp_lambda)) {
+            /* return visit_lambda(analy, getcdr(obj)); */
+        }
+    }
+
     return visit_call(analy, obj);
 }
 
@@ -127,7 +141,60 @@ static Node* visit_symbol(Analy *analy, Object *obj)
     /* 当前作用域找不到，认为是全局变量 */
     node = node_new(curarena(analy), kNodeGlobalObj);
     node->attr.obj = obj;
+
+    /* 全局变量如果找不到，那就是内建符号，如果还找不到，那么就失败 */
     return node;
+}
+
+static Node* visit_define(Analy *analy, Object *obj)
+{
+    if (gettype(getcar(obj)) == kCons) {
+        /* (define (x a b c) <xxx>) */
+        return visit_define_lambda(analy, obj);
+    }
+    /* (define x <xx> ) */
+    /* assert(!"[syntax error] definevar not symbol"); */
+    return visit_define_var(analy, obj);
+}
+
+static Node* visit_define_var(Analy *analy, Object *obj)
+{
+    Object *sym, *value;
+
+    if (gettype(getcar(obj)) != kSymbol) {
+        assert(!"[syntax error] define var syntax error");
+    }
+
+    sym = getcar(obj);
+    value = (gettype(getcdr(obj)) != kCons)
+        ? imp_nil
+        : getcar(getcdr(obj));
+
+    /* for debug */
+    printf("\nsym: ");
+    print_object(stdout, sym);
+    printf("\nvalue: ");
+    print_object(stdout, value);
+    printf("\n");
+
+    /* 访问value */
+    Node *node = visit(analy, value);
+
+    /* 添加符号 */
+    symtab_set(curenv(analy)->cursymtab, curarena(analy),
+               sym_getname(sym), node);
+
+    return node;
+}
+
+static Node* visit_define_lambda(Analy *analy, Object *obj)
+{
+    return NULL;
+}
+
+static Node* visit_lambda(Analy *analy, Object *args, Object *body)
+{
+    return NULL;
 }
 
 static Node* visit_call(Analy *analy, Object *obj)

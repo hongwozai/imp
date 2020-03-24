@@ -7,14 +7,20 @@ objfile=${filename}.o
 binfile=`echo ${filename} | sed -r 's/(.*)\.[^.]+/\1/g'`
 libfile=${BIN}/libimp_runtime.a
 
-${BIN}/imp_compiler $filename | tee ${binfile}.S | as -o $objfile
+echo "filename: ${filename} objfile: ${objfile} binfile: ${binfile}"
 
-if [ $? -ne 0 ]; then
+${BIN}/imp_compiler $filename 2>&1 1>/dev/null | as -o $objfile
+
+if [ $? -ne 0 ] || [ ! -f "${objfile}" ]; then
     echo "Compile Failed"
     exit $?
 fi
-cat ${binfile}.S
+# cat ${binfile}.S
 
 g++ -static -o ${binfile} ${objfile} ${libfile}
 
-rm -rf $objfile
+rm -rf $objfile ${binfile}.S
+
+echo "start:  ./${binfile}"
+./${binfile}
+echo "end"
