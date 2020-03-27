@@ -27,14 +27,16 @@ static void gencall(ModuleFunc *func, Node *node, Node **stack);
 static void genlabel(ModuleFunc *func, Node *node, Node **stack);
 static void genadd(ModuleFunc *func, Node *node, Node **stack);
 static void genimm(ModuleFunc *func, Node *node, Node **stack);
+static void genreturn(ModuleFunc *func, Node *node, Node **stack);
 static void emit(ModuleFunc *func, Block *block, Node *node);
 
 static InstGenOp ops[] = {
-    [kNodeLoad]  = { .gen = genload,  .emit = emit },
-    [kNodeAdd]   = { .gen = genadd,   .emit = emit },
-    [kNodeCall]  = { .gen = gencall,  .emit = emit },
-    [kNodeLabel] = { .gen = genlabel, .emit = emit },
-    [kNodeImm]   = { .gen = genimm,   .emit = emit }
+    [kNodeLoad]   = { .gen = genload,   .emit = emit },
+    [kNodeAdd]    = { .gen = genadd,    .emit = emit },
+    [kNodeCall]   = { .gen = gencall,   .emit = emit },
+    [kNodeLabel]  = { .gen = genlabel,  .emit = emit },
+    [kNodeImm]    = { .gen = genimm,    .emit = emit },
+    [kNodeReturn] = { .gen = genreturn, .emit = emit }
 };
 
 InstGenOp *instgenop_x64 = ops;
@@ -363,6 +365,30 @@ static void genimm(ModuleFunc *func, Node *node, Node **stack)
          instreg_unused(&op2),
          instreg_vset(&dst, data->vreg),
          node->attr.imm);
+}
+
+static void genreturn(ModuleFunc *func, Node *node, Node **stack)
+{
+    InstReg op1, op2, dst;
+    InstGenData *data = markrule(func, node, false);
+
+    assert(node->uses.size == 0);
+    assert(ptrvec_count(&node->inputs) == 1);
+
+    Node *retval = ptrvec_get(&node->inputs, 0);
+
+    /* 处理返回值 */
+    if (isneedhandle(retval)) {
+        retval->next = *stack;
+        *stack = retval;
+    }
+    nodelist_append(&func->arena, &data->nodelist,  retval);
+
+    EMIT(&func->arena, data,
+         "mov %%1, %%r",
+         instreg_dummy(&op1),
+         instreg_unused(&op2),
+         instreg_talloc(&dst, &target->regs[RAX]));
 }
 
 static void completion(Inst *inst, InstGenData *data)

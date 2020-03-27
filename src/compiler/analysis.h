@@ -38,6 +38,7 @@ typedef struct AnalyFunction {
     struct AnalyFunction *parent;
     /* 函数名称 */
     char *name;
+    size_t namelen;
     AnalyProtoType prototype;
 } AnalyFunction;
 

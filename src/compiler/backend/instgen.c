@@ -56,6 +56,7 @@ static ModuleFunc* newfunc(Module *module)
     func->vregindex = 0;
     func->stacksize = 0;
     func->calleeset = NULL;
+    func->name = NULL;
 
     list_append(&module->funcs, &func->link);
     return func;
@@ -176,6 +177,10 @@ void instgen_run(Analy *analy, Module *module)
         AnalyFunction *analyfunc = container_of(pos, AnalyFunction, link);
         ModuleFunc *func = newfunc(module);
 
+        if (analyfunc->name) {
+            func->name = arena_dup(&func->arena,
+                                   analyfunc->name, analyfunc->namelen + 1);
+        }
         walk_func(module, func, analyfunc);
     }
 

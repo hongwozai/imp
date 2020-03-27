@@ -11,7 +11,22 @@ static Node* visit_define(Analy *analy, Object *obj);
 static Node* visit_define_var(Analy *analy, Object *obj);
 static Node* visit_define_lambda(Analy *analy, Object *obj);
 static Node* visit_lambda(Analy *analy, Object *args, Object *body,
-                          AnalyFunc **func);
+                          char *name, size_t namelen);
+static Node* visit_do(Analy *analy, Object *obj);
+
+/**
+ * 获取临时的名称
+ */
+static char *func_getname(Arena *arena)
+{
+    static size_t func_num = 0;
+
+    /* 64为位足够使用，所以这里不担心其错误码 */
+    char buf[64];
+    size_t len = snprintf(buf, sizeof(buf), ".func%lu", func_num++);
+    buf[len] = '\0';
+    return arena_dup(arena, buf, len + 1);
+}
 
 static AnalyEnv* newenv(AnalyFunction *func)
 {
@@ -107,11 +122,14 @@ static Node *visit(Analy *analy, Object *obj)
             return visit_define(analy, getcdr(obj));
         } else if (equal_object(getcar(obj), imp_lambda)) {
             Object *rest = getcdr(obj);
+            char *name = func_getname(curarena(analy));
+            size_t namelen = strlen(name);
 
             assert(gettype(rest) == kCons);
-            assert(getcar(rest) == kCons ||
-                   getcar(rest) == kNil);
-            return visit_lambda(analy, getcar(rest), getcdr(rest));
+            assert(gettype(getcar(rest)) == kCons ||
+                   gettype(getcar(rest)) == kNil);
+            return visit_lambda(analy, getcar(rest), getcdr(rest),
+                                name, namelen);
         }
     }
 
@@ -192,25 +210,71 @@ static Node* visit_define_lambda(Analy *analy, Object *obj)
     Object *na = getcar(obj);
     Object *body = getcdr(obj);
 
+    assert(gettype(na) == kCons && gettype(getcar(na)) == kSymbol);
+
     /* 获得funcname */
+    char *name = str_getcstr(sym_getname(getcar(na)));
+    size_t namelen = str_getsize(sym_getname(getcar(na)));
 
     /* 这里构造funcobj */
-    AnalyFunc *func;
-    Node *funcnode = visit_lambda(analy, getcdr(na), body,
-                                  &func);
+    Node *func = visit_lambda(analy, getcdr(na), body, name, namelen);
 
-    /* func->name = sym_getname(getcar(na)); */
+    /* 添加符号 */
+    symtab_set(curenv(analy)->cursymtab, curarena(analy),
+               sym_getname(getcar(na)), func);
+
     return func;
 }
 
 static Node* visit_lambda(Analy *analy, Object *args, Object *body,
-                          AnalyFunc **func)
+                          char *name, size_t namelen)
 {
-    /* name = get_funcname */
-    /* newfunc */
-    /* node_new(kNodeLabel) */
-    /* node_new(func, gcnewv) */
-    return NULL;
+    AnalyFunction *func = newfunc(analy, analy->curfunc);
+    func->name = name;
+    func->namelen = namelen;
+
+    list_append(&analy->funclist, &func->link);
+
+    /* 对body进行求值 */
+    analy->curfunc = func;
+    {
+        Node *retval = visit_do(analy, body);
+        Node *retnode = node_new(curarena(analy), kNodeReturn);
+        node_addinput(curarena(analy), retnode, retval, false);
+
+        /* 将retnode加入region记录 */
+        if (curregion(analy)->attr.node) {
+            node_addinput(curarena(analy), retnode,
+                          curregion(analy)->attr.node, true);
+        }
+        curregion(analy)->attr.node = retnode;
+
+    }
+    analy->curfunc = func->parent;
+
+    /* 构造函数对象 */
+    Node *label = node_newlabel(curarena(analy), name, 0, 0);
+    Node *type  = node_new(curarena(analy), kNodeImm);
+    type->attr.imm = kPrimFunc;
+    Node *funclabel = node_newlabel(curarena(analy),
+                                    arena_dup(curarena(analy), "_runtime_newv",
+                                              sizeof("_runtime_newv")),
+                                    0,
+                                    0);
+    Node *call  = node_new(curarena(analy), kNodeCall);
+    node_addinput(curarena(analy), call, funclabel, false);
+    node_addinput(curarena(analy), call, type, false);
+    node_addinput(curarena(analy), call, label, false);
+    return call;
+}
+
+static Node* visit_do(Analy *analy, Object *obj)
+{
+    Node *last = NULL;
+    cons_foreach(cons, obj) {
+        last = visit(analy, cons->car);
+    }
+    return last;
 }
 
 static Node* visit_call(Analy *analy, Object *obj)

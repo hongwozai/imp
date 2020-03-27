@@ -75,6 +75,8 @@ typedef struct ModuleFunc {
     int stacksize;
     /* 该函数使用了哪些调用者保存的寄存器 */
     uint8_t *calleeset;
+    /* 函数名称 */
+    char *name;
 } ModuleFunc;
 
 typedef struct ModuleLabel {

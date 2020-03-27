@@ -94,8 +94,12 @@ static void walk_func(FILE *out, ModuleFunc *func)
     bool isalign = false;
 
     /* 函数准备操作 */
-    emit(out, ".global _main");
-    emit(out, "_main:");
+    if (!func->name) {
+        emit(out, ".global _main");
+        emit(out, "_main:");
+    } else {
+        emit(out, "%s:", func->name);
+    }
     emit(out, "push %rbp");
     emit(out, "movq %rsp, %rbp");
 
@@ -114,6 +118,7 @@ static void walk_func(FILE *out, ModuleFunc *func)
     /* 函数结束操作 */
     emit(out, "leaveq");
     emit(out, "ret");
+    emit(out, "");
 }
 
 void genasm_run(FILE *out, Module *module)

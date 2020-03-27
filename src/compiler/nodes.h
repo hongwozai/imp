@@ -17,6 +17,7 @@ typedef enum Opcode {
     kNodeGlobalObj,
     kNodeImm,
     kNodeCall,
+    kNodeReturn,
     /* load读取一个寄存器长度的数据 */
     kNodeLoad,
     /* store存放一个寄存器长度的数据 */
