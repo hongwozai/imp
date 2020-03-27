@@ -108,7 +108,7 @@ static bool isneedhandle(Node *node)
  * 该函数使用场景：
  * 在判断子节点是否可以与当前节点为一个覆盖(无人处理的节点)
  */
-static bool iscover(Node *node)
+static bool cancover(Node *node)
 {
     assert(node->data
            ? ((InstGenData*)node->data)->type != kInstDataUsed
@@ -128,7 +128,7 @@ static void genload(ModuleFunc *func, Node *node, Node **stack)
     Node *child = ptrvec_get(&node->inputs, 0);
 
     /* bingo! (Load (Add reg imm)) */
-    if (child->op == kNodeAdd && iscover(child)) {
+    if (child->op == kNodeAdd && cancover(child)) {
         /* (Add reg imm) or (Add imm reg) */
         assert(ptrvec_count(&child->inputs) == 2);
 
@@ -139,8 +139,8 @@ static void genload(ModuleFunc *func, Node *node, Node **stack)
          * 继续进行树覆盖时，必须保证接下来的节点可处理
          * 不可处理的节点一定是在队列中已经化为了其他节点的处理对象
          */
-        if ((left->op == kNodeImm && iscover(left)) ||
-            (right->op == kNodeImm && iscover(left))) {
+        if ((left->op == kNodeImm && cancover(left)) ||
+            (right->op == kNodeImm && cancover(left))) {
 
             Node *imm = (left->op == kNodeImm) ? left : right;
             Node *reg = (left->op == kNodeImm) ? right : left;
@@ -262,7 +262,7 @@ static void gencall(ModuleFunc *func, Node *node, Node **stack)
         if (argindex == 0) {
             funcnode = parent;
 
-            if (parent->op == kNodeLabel && iscover(parent)) {
+            if (parent->op == kNodeLabel && cancover(parent)) {
                 /* label dont push stack */
                 continue;
             }
@@ -376,6 +376,12 @@ static void genreturn(ModuleFunc *func, Node *node, Node **stack)
     assert(ptrvec_count(&node->inputs) == 1);
 
     Node *retval = ptrvec_get(&node->inputs, 0);
+
+    if (retval->op == kNodeCall && cancover(retval)) {
+        /* 不加入任何代码, TODO(zeya) 同时还要去掉call最后的mov语句 */
+        gencall(func, retval, stack);
+        return;
+    }
 
     /* 处理返回值 */
     if (isneedhandle(retval)) {

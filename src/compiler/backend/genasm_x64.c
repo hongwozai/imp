@@ -62,6 +62,10 @@ static void linear(FILE *out, ModuleFunc *func)
 static bool savecallee(FILE *out, ModuleFunc *func)
 {
     int num = 0;
+
+    if (!func->calleeset) {
+        return;
+    }
     for (int i = 0; i < target->regnum; i++) {
         if (bit_check(func->calleeset, i) &&
             target->regs[i].type == kCalleeSave) {
@@ -78,6 +82,9 @@ static bool savecallee(FILE *out, ModuleFunc *func)
 
 static void loadcallee(FILE *out, ModuleFunc *func, bool isalign)
 {
+    if (!func->calleeset) {
+        return;
+    }
     if (isalign) {
         emit(out, "addq $8, %rsp");
     }

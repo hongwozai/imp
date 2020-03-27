@@ -23,4 +23,4 @@ rm -rf $objfile ${binfile}.S
 
 echo "start:  ./${binfile}"
 ./${binfile}
-echo "end"
+echo -e "\nend"
