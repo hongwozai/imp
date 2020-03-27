@@ -377,12 +377,6 @@ static void genreturn(ModuleFunc *func, Node *node, Node **stack)
 
     Node *retval = ptrvec_get(&node->inputs, 0);
 
-    if (retval->op == kNodeCall && cancover(retval)) {
-        /* 不加入任何代码, TODO(zeya) 同时还要去掉call最后的mov语句 */
-        gencall(func, retval, stack);
-        return;
-    }
-
     /* 处理返回值 */
     if (isneedhandle(retval)) {
         retval->next = *stack;
