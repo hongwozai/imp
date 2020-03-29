@@ -1,12 +1,6 @@
 #include "runtime/object.h"
 #include "symtab.h"
 
-typedef struct HashNode {
-    HashLink hlink;
-    Object *str;
-    Node *irnode;
-} HashNode;
-
 /* BKDR */
 static size_t hashfunc(void *key)
 {
@@ -32,13 +26,13 @@ static size_t hashfunc(void *key)
 
 static bool equalfunc(void *key, HashLink *hlink)
 {
-    Object *other = container_of(hlink, HashNode, hlink)->str;
+    Object *other = container_of(hlink, SymNode, hlink)->str;
     return equal_object((Object*)key, other);
 }
 
 static void *keyfunc(HashLink *link)
 {
-    HashNode *node = container_of(link, HashNode, hlink);
+    SymNode *node = container_of(link, SymNode, hlink);
     return (void*)node->str;
 }
 
@@ -61,7 +55,7 @@ Node* symtab_get(SymTab *symtab, Object *str)
     if (!hlink) {
         return NULL;
     }
-    return container_of(hlink, HashNode, hlink)->irnode;
+    return container_of(hlink, SymNode, hlink)->irnode;
 }
 
 Node* symtab_nestget(SymTab *symtab, Object *str)
@@ -78,11 +72,16 @@ Node* symtab_nestget(SymTab *symtab, Object *str)
 
 void symtab_set(SymTab *symtab, Arena *arena, Object *str, Node *node)
 {
-    HashNode *hnode = arena_malloc(arena, sizeof(HashNode));
+    SymNode *hnode = arena_malloc(arena, sizeof(SymNode));
     hashmap_initlink(&hnode->hlink);
     hnode->str = str;
     hnode->irnode = node;
     hashmap_set(&symtab->map, &hnode->hlink, true);
+}
+
+void symtab_funcset(SymTab *symtab, Arena *arena, Object *str, Node *node)
+{
+    
 }
 
 void symtab_destroy(SymTab *symtab)

@@ -8,6 +8,14 @@
 #include "utils/list.h"
 #include "utils/hashmap.h"
 
+typedef struct SymNode {
+    HashLink hlink;
+    Object *str;
+    Node *irnode;
+    bool isfunc;
+    void *any;
+} SymNode;
+
 /* string - node */
 typedef struct SymTab {
     struct SymTab *prev;
