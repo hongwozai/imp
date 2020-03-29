@@ -15,8 +15,12 @@ typedef enum Opcode {
     kNodeCallObj,
     kNodeConstObj,
     kNodeGlobalObj,
+    /* 将参数构成一个list对象并返回 */
+    kNodeListObj,
     kNodeImm,
     kNodeCall,
+    /* 使用imm来存储第几个参数 */
+    kNodeArg,
     kNodeReturn,
     /* load读取一个寄存器长度的数据 */
     kNodeLoad,

@@ -59,10 +59,8 @@ static void linear(FILE *out, ModuleFunc *func)
     free(bitset);
 }
 
-static bool savecallee(FILE *out, ModuleFunc *func)
+static void savecallee(FILE *out, ModuleFunc *func)
 {
-    int num = 0;
-
     if (!func->calleeset) {
         return;
     }
@@ -70,23 +68,15 @@ static bool savecallee(FILE *out, ModuleFunc *func)
         if (bit_check(func->calleeset, i) &&
             target->regs[i].type == kCalleeSave) {
             emit(out, "pushq %s", target->regs[i].rep);
-            num++;
         }
     }
-    if ((num & 1) == 1) {
-        emit(out, "pushq $0");
-        return true;
-    }
-    return false;
+    return;
 }
 
-static void loadcallee(FILE *out, ModuleFunc *func, bool isalign)
+static void loadcallee(FILE *out, ModuleFunc *func)
 {
     if (!func->calleeset) {
         return;
-    }
-    if (isalign) {
-        emit(out, "addq $8, %rsp");
     }
     for (int i = target->regnum; i > 0; i--) {
         if (bit_check(func->calleeset, i) &&
@@ -98,8 +88,6 @@ static void loadcallee(FILE *out, ModuleFunc *func, bool isalign)
 
 static void walk_func(FILE *out, ModuleFunc *func)
 {
-    bool isalign = false;
-
     /* 函数准备操作 */
     if (!func->name) {
         emit(out, ".global _main");
@@ -111,7 +99,10 @@ static void walk_func(FILE *out, ModuleFunc *func)
     emit(out, "movq %rsp, %rbp");
 
     /* 被调用者保存寄存器 */
-    isalign = savecallee(out, func);
+    if (func->alignsize != 0) {
+        emit(out, "subq $0x%02X, %rsp", func->alignsize);
+    }
+    savecallee(out, func);
 
     /* 扩展栈大小 */
     emit(out, "subq $0x%02X, %rsp", func->stacksize);
@@ -120,7 +111,10 @@ static void walk_func(FILE *out, ModuleFunc *func)
     linear(out, func);
 
     /* 恢复被调用者保存的寄存器 */
-    loadcallee(out, func, isalign);
+    loadcallee(out, func);
+    if (func->alignsize != 0) {
+        emit(out, "addq $0x%02X, %rsp", func->alignsize);
+    }
 
     /* 函数结束操作 */
     emit(out, "leaveq");

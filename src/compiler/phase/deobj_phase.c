@@ -27,8 +27,7 @@ static Node* convobj(Phase *phase, AnalyFunction *func,
     Node *gcnewnode =
         node_newlabel(
             &func->arena,
-            arena_dup(&func->arena, "_runtime_newv",
-                      sizeof("_runtime_newv")),
+            "_runtime_newv",
             0,
             0
             );
@@ -53,8 +52,7 @@ static Node* constrobj(Phase *phase, AnalyFunction *func,
     Node *gcnewnode =
         node_newlabel(
             &func->arena,
-            arena_dup(&func->arena, "_runtime_newstr",
-                      sizeof("_runtime_newstr")),
+            "_runtime_newstr",
             0,
             0
             );
@@ -105,6 +103,7 @@ static Node* deconstobj(Phase *phase, AnalyFunction *func, Node *node)
 
         Node *load = node_new(&func->arena, kNodeLoad);
         setmode(phase, load);
+        node_addinput(&func->arena, load, label, false);
         return convobj(phase, func, gettype(node->attr.obj), load);
     }
 
@@ -182,6 +181,15 @@ static void deobj_value(Phase *phase, AnalyFunction *func, Node *node)
         node_replaceinput(&func->arena, node, false, 0,
                           defuncobj(phase, &func->arena,
                                     ptrvec_get(&node->inputs, 0)));
+        break;
+    }
+    case kNodeListObj: {
+        /* (ListObj ...) (call _runtime_list ...) */
+        Node *label = node_newlabel(&func->arena, "_runtime_list", 0, 0);
+        node_setmode(label, phase_nextmode(phase));
+
+        node_setop(node, kNodeCall);
+        ptrvec_push(&func->arena, &node->inputs, label);
         break;
     }
     default:

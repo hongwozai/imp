@@ -55,6 +55,8 @@ static ModuleFunc* newfunc(Module *module)
     func->start = NULL;
     func->vregindex = 0;
     func->stacksize = 0;
+    func->alignsize = 0;
+    func->calleesize = 0;
     func->calleeset = NULL;
     func->name = NULL;
 

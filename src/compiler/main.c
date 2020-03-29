@@ -34,7 +34,9 @@ int main(int argc, char *argv[])
     }
 
     printf("\n");
+    /* phase_run(print_phase, &analy); */
     phase_run(deobj_phase, &analy);
+    /* phase_run(print_phase, &analy); */
 
     Module module;
     instgen_run(&analy, &module);

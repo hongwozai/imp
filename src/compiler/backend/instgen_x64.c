@@ -28,6 +28,7 @@ static void genlabel(ModuleFunc *func, Node *node, Node **stack);
 static void genadd(ModuleFunc *func, Node *node, Node **stack);
 static void genimm(ModuleFunc *func, Node *node, Node **stack);
 static void genreturn(ModuleFunc *func, Node *node, Node **stack);
+static void genarg(ModuleFunc *func, Node *node, Node **stack);
 static void emit(ModuleFunc *func, Block *block, Node *node);
 
 static InstGenOp ops[] = {
@@ -36,7 +37,8 @@ static InstGenOp ops[] = {
     [kNodeCall]   = { .gen = gencall,   .emit = emit },
     [kNodeLabel]  = { .gen = genlabel,  .emit = emit },
     [kNodeImm]    = { .gen = genimm,    .emit = emit },
-    [kNodeReturn] = { .gen = genreturn, .emit = emit }
+    [kNodeReturn] = { .gen = genreturn, .emit = emit },
+    [kNodeArg]    = { .gen = genarg,    .emit = emit }
 };
 
 InstGenOp *instgenop_x64 = ops;
@@ -180,6 +182,20 @@ static void genload(ModuleFunc *func, Node *node, Node **stack)
     }
 }
 
+TargetReg *arg2reg(int index)
+{
+    TargetReg *argreg = NULL;
+    switch (index) {
+    case 1: argreg = &target->regs[RDI]; break;
+    case 2: argreg = &target->regs[RSI]; break;
+    case 3: argreg = &target->regs[RDX]; break;
+    case 4: argreg = &target->regs[RCX]; break;
+    case 5: argreg = &target->regs[R8]; break;
+    case 6: argreg = &target->regs[R9]; break;
+    }
+    return argreg;
+}
+
 /**
  * 返回是否需要添加该参数
  * 该函数必须以相反的顺序调用
@@ -190,15 +206,7 @@ static bool matchargs(ModuleFunc *func, Node *node, size_t iter,
     InstReg op1, op2, dst;
     TargetReg *argreg = NULL;
 
-    switch (iter) {
-    case 1: argreg = &target->regs[RDI]; break;
-    case 2: argreg = &target->regs[RSI]; break;
-    case 3: argreg = &target->regs[RDX]; break;
-    case 4: argreg = &target->regs[RCX]; break;
-    case 5: argreg = &target->regs[R8]; break;
-    case 6: argreg = &target->regs[R9]; break;
-    }
-
+    argreg = arg2reg(iter);
     if (iter <= 6) {
         assert(argreg);
 
@@ -382,13 +390,36 @@ static void genreturn(ModuleFunc *func, Node *node, Node **stack)
         retval->next = *stack;
         *stack = retval;
     }
-    nodelist_append(&func->arena, &data->nodelist,  retval);
+    nodelist_append(&func->arena, &data->nodelist, retval);
 
     EMIT(&func->arena, data,
          "mov %%1, %%r",
          instreg_dummy(&op1),
          instreg_unused(&op2),
          instreg_talloc(&dst, &target->regs[RAX]));
+}
+
+static void genarg(ModuleFunc *func, Node *node, Node **stack)
+{
+    InstReg op1, op2, dst;
+    InstGenData *data = markrule(func, node, true);
+    TargetReg *argreg = arg2reg(node->attr.imm);
+
+    if (argreg) {
+        EMIT(&func->arena, data,
+             "mov %%1, %%r",
+             instreg_talloc(&op1, argreg),
+             instreg_unused(&op2),
+             instreg_vset(&dst, data->vreg));
+    } else {
+        EMIT(&func->arena, data,
+             "mov 0x%X(%%1), %%r",
+             instreg_talloc(&op1, &target->regs[RBP]),
+             instreg_unused(&op2),
+             instreg_vset(&dst, data->vreg),
+             /* rbp + addr */
+             8 + 8 + (node->attr.imm - 7));
+    }
 }
 
 static void completion(Inst *inst, InstGenData *data)
@@ -426,7 +457,12 @@ static void emit(ModuleFunc *func, Block *block, Node *node)
         completion(inst, data);
 
         /* 2. 插入block */
-        list_append(&block->insts, &inst->link);
+        if (node->op == kNodeArg) {
+            /* 对于参数需要提早加入 */
+            list_push(&block->insts, &inst->link);
+        } else {
+            list_append(&block->insts, &inst->link);
+        }
 
         /* debug */
         /* inst_dprint(stdout, inst); */

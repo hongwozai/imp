@@ -2,6 +2,7 @@
 #include <string.h>
 #include "object.h"
 #include "panic.h"
+#include "global.h"
 
 void print_object(FILE *out, Object *obj)
 {
@@ -41,12 +42,19 @@ void print_object(FILE *out, Object *obj)
         break;
     }
     case kCons: {
+        Object *lastcdr = imp_nil;
+
         fprintf(out, "(");
         cons_foreach(cons, obj) {
             print_object(out, cons->car);
             if (gettype(cons->cdr) == kCons) {
                 fprintf(out, " ");
             }
+            lastcdr = cons->cdr;
+        }
+        if (gettype(lastcdr) != kNil) {
+            fprintf(out, " . ");
+            print_object(out, lastcdr);
         }
         fprintf(out, ")");
         break;

@@ -10,18 +10,15 @@
 typedef struct AnalyArg {
     enum {
         kArgPosObj,
-        kArgPosType,
         kArgRestObj,
         kArgRetObj,
-        kArgRetType,
     } type;
     enum ObjectType objtype;
 } AnalyArg;
 
 typedef struct AnalyProtoType {
-    size_t argnum;
     AnalyArg retval;
-    AnalyArg *args;
+    PtrVec args;
 } AnalyProtoType;
 
 typedef struct AnalyEnv {
@@ -39,6 +36,7 @@ typedef struct AnalyFunction {
     /* 函数名称 */
     char *name;
     size_t namelen;
+    /* 函数原型 */
     AnalyProtoType prototype;
 } AnalyFunction;
 

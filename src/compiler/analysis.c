@@ -1,4 +1,5 @@
 #include "nodes.h"
+#include "mangle.h"
 #include "analysis.h"
 #include "runtime/panic.h"
 #include "runtime/global.h"
@@ -46,6 +47,9 @@ static AnalyFunction* newfunc(Analy *analy, AnalyFunction *parent)
     arena_init(&func->arena, 4096);
     func->env = newenv(func);
     func->parent = parent;
+    func->name = NULL;
+    func->namelen = 0;
+    ptrvec_init(&func->arena, &func->prototype.args, 2);
 
     /* 新创建一个region */
     Node *region = node_new(&func->arena, kNodeRegion);
@@ -214,16 +218,68 @@ static Node* visit_define_lambda(Analy *analy, Object *obj)
 
     /* 获得funcname */
     char *name = str_getcstr(sym_getname(getcar(na)));
-    size_t namelen = str_getsize(sym_getname(getcar(na)));
+    /* size_t namelen = str_getsize(sym_getname(getcar(na))); */
+
+    name = mangle(curarena(analy), name);
 
     /* 这里构造funcobj */
-    Node *func = visit_lambda(analy, getcdr(na), body, name, namelen);
+    Node *func = visit_lambda(analy, getcdr(na), body, name, strlen(name));
 
     /* 添加符号 */
     symtab_set(curenv(analy)->cursymtab, curarena(analy),
                sym_getname(getcar(na)), func);
 
     return func;
+}
+
+static void addarg(Analy *analy, Object *sym, int num, int type)
+{
+    /* 构造kNodeArg结点，并加入符号表 */
+    Node *arg = node_new(curarena(analy), kNodeArg);
+    arg->attr.imm = num;
+
+    symtab_set(curenv(analy)->cursymtab, curarena(analy),
+               sym_getname(sym), arg);
+
+    /* 加入函数原型中 */
+    AnalyArg *aa = arena_malloc(curarena(analy), sizeof(AnalyArg));
+    aa->type = type;
+    aa->objtype = kNil;
+
+    size_t index = ptrvec_add(curarena(analy), &analy->curfunc->prototype.args, aa);
+
+    /* 强迫按顺序使用 */
+    assert((index + 1) == num);
+}
+
+static void handle_args(Analy *analy, Object *args)
+{
+    int index = 0;
+    Object *lastcdr = imp_nil;
+
+    if (gettype(args) == kCons) {
+        /* 变量加入当前符号表 */
+        cons_foreach(cons, args) {
+            Object *sym = cons->car;
+            assert(gettype(sym) == kSymbol);
+
+            addarg(analy, sym, ++index, kArgPosObj);
+            lastcdr = cons->cdr;
+        }
+    }
+
+    /* 可变参数 */
+    lastcdr = args;
+    assert(gettype(lastcdr) == kSymbol);
+    if (gettype(lastcdr) == kSymbol) {
+        Object *sym = lastcdr;
+        addarg(analy, sym, ++index, kArgRestObj);
+    }
+
+    /* 从参数退出之后，需要创建一个新的符号表 */
+    SymTab *newtab = arena_malloc(curarena(analy), sizeof(SymTab));
+    symtab_create(newtab, curarena(analy), curenv(analy)->cursymtab);
+    curenv(analy)->cursymtab = newtab;
 }
 
 static Node* visit_lambda(Analy *analy, Object *args, Object *body,
@@ -238,6 +294,10 @@ static Node* visit_lambda(Analy *analy, Object *args, Object *body,
     /* 对body进行求值 */
     analy->curfunc = func;
     {
+        /* 处理参数 */
+        handle_args(analy, args);
+
+        /* 处理body */
         Node *retval = visit_do(analy, body);
         Node *retnode = node_new(curarena(analy), kNodeReturn);
         node_addinput(curarena(analy), retnode, retval, false);
@@ -256,11 +316,7 @@ static Node* visit_lambda(Analy *analy, Object *args, Object *body,
     Node *label = node_newlabel(curarena(analy), name, 0, 0);
     Node *type  = node_new(curarena(analy), kNodeImm);
     type->attr.imm = kPrimFunc;
-    Node *funclabel = node_newlabel(curarena(analy),
-                                    arena_dup(curarena(analy), "_runtime_newv",
-                                              sizeof("_runtime_newv")),
-                                    0,
-                                    0);
+    Node *funclabel = node_newlabel(curarena(analy), "_runtime_newv", 0, 0);
     Node *call  = node_new(curarena(analy), kNodeCall);
     node_addinput(curarena(analy), call, funclabel, false);
     node_addinput(curarena(analy), call, type, false);

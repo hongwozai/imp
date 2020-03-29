@@ -108,6 +108,9 @@ void node_dprint(FILE *out, Node *self)
     case kNodeGlobalObj:
         fprintf(out, "GlobalObj");
         break;
+    case kNodeListObj:
+        fprintf(out, "ListObj");
+        break;
     case kNodePhi:
         fprintf(out, "Phi");
         break;
@@ -131,6 +134,9 @@ void node_dprint(FILE *out, Node *self)
         break;
     case kNodeLabel:
         fprintf(out, "Label");
+        break;
+    case kNodeReturn:
+        fprintf(out, "Return");
         break;
     default:
         fprintf(out, "op%d", self->op);

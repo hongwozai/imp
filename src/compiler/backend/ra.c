@@ -253,11 +253,12 @@ static void scan(RA *ra, ModuleFunc *func)
     }
 }
 
-static void completereg(RA *ra, ModuleFunc *func, Block *block,
-                        Inst *inst, int pos, InstReg *reg)
+static void spill(RA *ra, ModuleFunc *func, Block *block,
+                  Inst *inst, int pos, InstReg *reg)
 {
     /* 该虚拟寄存器对应的结果 */
     Interval *interval = ptrvec_get(&ra->intervalmap, reg->vreg);
+    int offset = - func->alignsize - func->calleesize - interval->result.stackpos;
 
     if (interval->result.type == kRAReg) {
         instreg_talloc(reg, interval->result.reg);
@@ -274,7 +275,7 @@ static void completereg(RA *ra, ModuleFunc *func, Block *block,
                     instreg_talloc(&op1, &target->regs[RBP]),
                     instreg_unused(&op2),
                     instreg_talloc(&dst, &target->regs[RAX]),
-                    -interval->result.stackpos);
+                    offset);
 
             instreg_talloc(reg, &target->regs[RAX]);
         } else {
@@ -287,7 +288,7 @@ static void completereg(RA *ra, ModuleFunc *func, Block *block,
                     instreg_talloc(&op1, &target->regs[RAX]),
                     instreg_unused(&op2),
                     instreg_talloc(&dst, &target->regs[RBP]),
-                    -interval->result.stackpos);
+                    offset);
 
             instreg_talloc(reg, &target->regs[RAX]);
         }
@@ -306,9 +307,34 @@ static void completion(RA *ra, ModuleFunc *func, Block *block)
             }
             assert(inst->reg[i].vreg < ptrvec_count(&ra->intervalmap));
             /* 针对每个虚拟寄存器 */
-            completereg(ra, func, block, inst, i, &inst->reg[i]);
+            spill(ra, func, block, inst, i, &inst->reg[i]);
         }
         /* inst_dprint(stdout, inst); */
+    }
+}
+
+static void calcstacksize(RA *ra, ModuleFunc *func)
+{
+    int num = 0;
+
+    if (func->calleeset) {
+        for (int i = 0; i < target->regnum; i++) {
+            if (bit_check(func->calleeset, i) &&
+                target->regs[i].type == kCalleeSave) {
+                num++;
+            }
+        }
+    }
+    /* 栈还需要将被调者保存的寄存器保存的空间 */
+    func->calleesize = num * target->regsize;
+    /* 这里让栈按要求的尺寸字节对齐 */
+    func->stacksize = ra->stacksize;
+
+    /* 设置对齐字节数 */
+    int size = (func->calleesize + func->stacksize) % target->stackalign;
+    if (size != 0) {
+        func->alignsize = target->stackalign - size;
+        assert(func->alignsize != target->regnum);
     }
 }
 
@@ -323,14 +349,15 @@ static void walk_func(ModuleFunc *func)
     /* 2. 遍历interval，并进行分配 */
     scan(&ra, func);
 
-    /* 3. 填回insts */
+    /* 3. 计算栈空间 */
+    calcstacksize(&ra, func);
+
+    /* 4. 填回insts */
     ptrvec_foreach(iter, &func->blocks) {
         Block *block = ptrvec_get(&func->blocks, iter);
         completion(&ra, func, block);
     }
 
-    /* 这里让栈按要求的尺寸字节对齐 */
-    func->stacksize = ROUNDUP(ra.stacksize, target->stackalign);
     freera(&ra);
 }
 

@@ -2,14 +2,14 @@
 
 static void print_value(Phase *phase, AnalyFunction *func, Node *node)
 {
-    node_dprint(stderr, node);
-    fprintf(stderr, "\n");
+    node_dprint(stdout, node);
+    fprintf(stdout, "\n");
 }
 
 static void print_region(Phase *phase, AnalyFunction *func, Node *node)
 {
-    node_dprint(stderr, node);
-    fprintf(stderr, "\n");
+    node_dprint(stdout, node);
+    fprintf(stdout, "\n");
 }
 
 

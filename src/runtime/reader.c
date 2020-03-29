@@ -229,6 +229,23 @@ static Object* read_list(Reader *reader)
             return ret;
         }
 
+        /* 支持点对 */
+        if (ch == '.') {
+            Object *elem = reader_read(reader);
+            getcdr(last) = elem;
+
+            /* 读取) */
+            ch = readchar(reader);
+            while (isspace(ch)) {
+                ch = readchar(reader);
+            }
+
+            if (ch == ')') {
+                return ret;
+            }
+            panic("[syntax error] not pair!");
+        }
+
         backchar(reader);
         Object *elem = reader_read(reader);
 
@@ -241,9 +258,8 @@ static Object* read_list(Reader *reader)
         if (last == imp_nil) {
             ret = last = (Object*)new;
         } else {
-            ConsObject *cons = (ConsObject*)last;
-            cons->cdr = (Object*)new;
-            last = cons->cdr;
+            getcdr(last) = (Object*)new;
+            last = getcdr(last);
         }
     }
     return ret;

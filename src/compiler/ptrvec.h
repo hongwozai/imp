@@ -28,18 +28,24 @@ static inline void ptrvec_init(Arena *arena, PtrVec *vec, size_t count)
     }
 }
 
+static inline size_t ptrvec_extend(Arena *arena, PtrVec *vec)
+{
+    /* 初始值为1 */
+    size_t newcap = (vec->capacity == 0 ? 1 : vec->capacity) << 1;
+    if (vec->capacity != 0 && newcap <= vec->capacity) {
+        return vec->capacity;
+    }
+    void **newbuf = arena_malloc(arena, sizeof(void*) * newcap);
+    memcpy(newbuf, vec->elems, sizeof(void*) * vec->count);
+    vec->elems = newbuf;
+    vec->capacity = newcap;
+    return vec->capacity;
+}
+
 static inline size_t ptrvec_add(Arena *arena, PtrVec *vec, void *elem)
 {
     if (vec->capacity <= vec->count) {
-        /* 初始值为1 */
-        size_t newcap = (vec->capacity == 0 ? 1 : vec->capacity) << 1;
-        if (vec->capacity != 0 && newcap <= vec->capacity) {
-            return -1;
-        }
-        void **newbuf = arena_malloc(arena, sizeof(void*) * newcap);
-        memcpy(newbuf, vec->elems, sizeof(void*) * vec->count);
-        vec->elems = newbuf;
-        vec->capacity = newcap;
+        ptrvec_extend(arena, vec);
     }
     vec->elems[vec->count ++] = elem;
     return vec->count - 1;
@@ -67,6 +73,17 @@ static inline void* ptrvec_set(PtrVec *vec, size_t index, void *elem)
     void *old = vec->elems[index];
     vec->elems[index] = elem;
     return old;
+}
+
+static inline size_t ptrvec_push(Arena *arena, PtrVec *vec, void *elem)
+{
+    if (vec->capacity <= vec->count) {
+        ptrvec_extend(arena, vec);
+    }
+    memmove(vec->elems + 1, vec->elems, vec->count);
+    vec->elems[0] = elem;
+    vec->count ++;
+    return 0;
 }
 
 #endif /* SRC_COMPILER_PTRVEC_H */
